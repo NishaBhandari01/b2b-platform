@@ -1,0 +1,7 @@
+// This file should not exist - delete it or use a layout-only route
+// The actual landing page is in app/(public)/page.tsx which is served at /
+// This root page.tsx creates routing conflicts and should be removed
+
+export default function Page() {
+  return null
+}
