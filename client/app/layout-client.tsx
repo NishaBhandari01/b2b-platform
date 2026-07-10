@@ -3,15 +3,20 @@
 import { AuthProvider } from "@/lib/hooks/useAuth";
 import { ToastProvider } from "@/lib/hooks/useToast";
 import { Analytics } from "@vercel/analytics/next";
-import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactNode, useState } from "react";
 
 export function LayoutClient({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <AuthProvider>
-      <ToastProvider>
-        {children}
-        {process.env.NODE_ENV === "production" && <Analytics />}
-      </ToastProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ToastProvider>
+          {children}
+          {process.env.NODE_ENV === "production" && <Analytics />}
+        </ToastProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

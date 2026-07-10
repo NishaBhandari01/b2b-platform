@@ -15,10 +15,28 @@ model User {
   role      UserRole @default(buyer)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  rfqs      Rfq[]
 }
 
 enum UserRole {
   buyer
   supplier
   admin
+}
+
+
+model Rfq {
+  id         String   @id @default(cuid())
+  title       String
+  category   String
+  quantity   Int
+  budget     Float
+  deadline   DateTime
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  //connect to user 
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
 }

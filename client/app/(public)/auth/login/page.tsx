@@ -10,7 +10,7 @@ import { Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoading, user } = useAuth();
+  const { login, isLoading, user, googleLogin } = useAuth();
   const { success, error: showError } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -142,7 +142,32 @@ export default function LoginPage() {
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  const userData = await googleLogin(
+                    "google.user@tradehub.com",
+                    "Google User",
+                  );
+                  const role = userData?.role || user?.role || "buyer";
+                  const dashboardUrl =
+                    role === "admin"
+                      ? "/admin"
+                      : role === "supplier"
+                        ? "/supplier"
+                        : "/buyer";
+                  success("Signed in", `Welcome, ${userData.name}.`);
+                  router.push(dashboardUrl);
+                } catch {
+                  showError(
+                    "Google sign-in failed",
+                    "Please try again in a moment.",
+                  );
+                }
+              }}
+            >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

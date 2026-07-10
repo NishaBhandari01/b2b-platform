@@ -12,9 +12,27 @@ export const registerSchema = z.object({
 
 export type RegisterSchema = z.infer<typeof registerSchema>;
 
-const loginSchema = z.object({
+export const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
 });
+export type LoginSchema = z.infer<typeof LoginSchema>;
 
-export type LoginSchema = z.infer<typeof loginSchema>;
+export const GoogleAuthSchema = z.object({
+  email: z.string().email(),
+  name: z.string().optional(),
+  role: z.enum(["buyer", "supplier", "admin"]).optional(),
+});
+export type GoogleAuthSchema = z.infer<typeof GoogleAuthSchema>;
+
+const loginResponseSchema = z.object({
+  token: z.string(),
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().email(),
+    role: z.enum(["buyer", "supplier", "admin"]),
+  }),
+});
+
+export type LoginResponseSchema = z.infer<typeof loginResponseSchema>;

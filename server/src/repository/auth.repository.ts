@@ -1,5 +1,4 @@
 import prisma from "../config/db.js";
-// import { Prisma } from "@prisma/client";
 
 export class AuthRepository {
   async createUser(userData: {
@@ -19,6 +18,30 @@ export class AuthRepository {
         email,
       },
     });
+  }
+
+  async findUserById(id: string) {
+    return await prisma.user.findUnique({
+      where: {
+        id,
+      },
+    });
+  }
+
+  async login(email: string, _userData: { password: string }) {
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+    if (!user) {
+      throw new Error("User not found");
+    }
+    return user;
+  }
+
+  async logout(_userId: string) {
+    return true;
   }
 }
 
