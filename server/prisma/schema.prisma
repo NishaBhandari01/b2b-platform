@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      UserRole @default(buyer)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  rfqs      Rfq[]
+  id          String      @id @default(cuid())
+  name        String
+  email       String      @unique
+  password    String
+  role        UserRole    @default(buyer)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  rfqs        Rfq[]
+  quotations  Quotation[]
 }
 
 enum UserRole {
@@ -24,19 +25,44 @@ enum UserRole {
   admin
 }
 
+enum RFQStatus {
+  draft
+  published
+  closed
+}
+
+enum QuotationStatus {
+  pending
+  accepted
+  rejected
+}
 
 model Rfq {
-  id         String   @id @default(cuid())
+  id          String      @id @default(cuid())
   title       String
-  category   String
-  quantity   Int
-  budget     Float
-  deadline   DateTime
+  category    String
+  quantity    Int
+  budget      Float
+  deadline    DateTime
   description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  //connect to user 
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  status      RFQStatus   @default(published)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  quotations  Quotation[]
+}
 
+model Quotation {
+  id          String          @id @default(cuid())
+  rfqId       String
+  rfq         Rfq             @relation(fields: [rfqId], references: [id])
+  supplierId  String
+  supplier    User            @relation(fields: [supplierId], references: [id])
+  price       Float
+  leadTime    String
+  message     String
+  status      QuotationStatus @default(pending)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }

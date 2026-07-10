@@ -57,10 +57,20 @@
 // export default router;
 
 import express from "express";
-import { createRFQ } from "../controller/rfq.controller.js";
+import {
+  createRFQ,
+  getAllRFQs,
+  getRFQById,
+  createQuotation,
+  updateQuotationStatus,
+} from "../controller/rfq.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
-import { createRFQSchema } from "../validator/rfq.validator.js";
+import {
+  createRFQSchema,
+  createQuotationSchema,
+  updateQuotationStatusSchema,
+} from "../validator/rfq.validator.js";
 
 const router = express.Router();
 
@@ -178,5 +188,19 @@ const router = express.Router();
  */
 
 router.post("/", authenticate, validate(createRFQSchema), createRFQ);
+router.get("/", authenticate, getAllRFQs);
+router.get("/:id", authenticate, getRFQById);
+router.post(
+  "/:id/quotations",
+  authenticate,
+  validate(createQuotationSchema),
+  createQuotation,
+);
+router.patch(
+  "/quotations/:id/status",
+  authenticate,
+  validate(updateQuotationStatusSchema),
+  updateQuotationStatus,
+);
 
 export default router;

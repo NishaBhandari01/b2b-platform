@@ -1,7 +1,19 @@
 import dotenv from "dotenv";
+import { execSync } from "child_process";
 import prisma from "./config/db.js";
 
 dotenv.config();
+
+try {
+  if (process.env.NODE_ENV !== "production") {
+    console.log("⏳ Applying Prisma schema to the database...");
+    execSync("npx prisma db push --schema prisma/schema.prisma", {
+      stdio: "inherit",
+    });
+  }
+} catch (err) {
+  console.error("⚠️ Prisma db push failed:", err);
+}
 
 import app from "./app.js";
 

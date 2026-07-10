@@ -48,7 +48,9 @@ export const createRFQ = async (req: AuthRequest, res: Response) => {
 
 export const getRFQById = async (req: AuthRequest, res: Response) => {
   try {
-    const rfqId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const rfqId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
 
     if (!rfqId) {
       return res.status(400).json({
@@ -57,7 +59,8 @@ export const getRFQById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const rfq = await rfqService.getRFQById(rfqId);
+    const includeQuotes = req.user?.role === "buyer";
+    const rfq = await rfqService.getRFQById(rfqId, includeQuotes);
 
     if (!rfq) {
       return res.status(404).json({
@@ -73,7 +76,92 @@ export const getRFQById = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "",
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const getAllRFQs = async (req: AuthRequest, res: Response) => {
+  try {
+    const rfqs = await rfqService.getUserRFQs(req.user!.id, req.user!.role);
+
+    return res.status(200).json({
+      success: true,
+      data: rfqs,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const createQuotation = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== "supplier") {
+      return res.status(403).json({
+        success: false,
+        message: "Only suppliers can submit quotations",
+      });
+    }
+
+    const rfqId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const quotation = await rfqService.createQuotation({
+      rfqId,
+      supplierId: req.user!.id,
+      price: req.body.price,
+      leadTime: req.body.leadTime,
+      message: req.body.message,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Quotation submitted successfully",
+      data: quotation,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const updateQuotationStatus = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    if (req.user?.role !== "buyer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only buyers can accept or reject quotations",
+      });
+    }
+
+    const quotationId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const updatedQuotation = await rfqService.updateQuotationStatus(
+      quotationId,
+      req.user!.id,
+      req.body.status,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Quotation status updated",
+      data: updatedQuotation,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
     });
   }
 };
