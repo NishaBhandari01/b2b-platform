@@ -15,8 +15,10 @@ model User {
   role        UserRole    @default(buyer)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  rfqs        Rfq[]
-  quotations  Quotation[]
+  rfqs            Rfq[]
+  quotations      Quotation[]
+  sentMessages    Message[] @relation("sentMessages")
+  receivedMessages Message[] @relation("receivedMessages")
 }
 
 enum UserRole {
@@ -51,18 +53,53 @@ model Rfq {
   userId      String
   user        User        @relation(fields: [userId], references: [id])
   quotations  Quotation[]
+  messages    Message[]
 }
 
 model Quotation {
   id          String          @id @default(cuid())
   rfqId       String
-  rfq         Rfq             @relation(fields: [rfqId], references: [id])
+  rfq         Rfq             @relation(fields: [rfqId], references: [id], onDelete: Cascade)
   supplierId  String
   supplier    User            @relation(fields: [supplierId], references: [id])
   price       Float
   leadTime    String
   message     String
   status      QuotationStatus @default(pending)
+
+  conversation Conversation? @relation("QuotationConversation")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }
+
+model Conversation {
+  id          String      @id @default(cuid())
+  quotationId String @unique
+  quotation   Quotation   @relation("QuotationConversation", fields: [quotationId], references: [id])
+  messages    Message[]   @relation("ConversationMessages")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  rfqId          String
+  rfq            Rfq       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   Conversation? @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String?
+  sender         User?     @relation("sentMessages", fields: [senderId], references: [id])
+  senderRole     String?   // "buyer" | "supplier"
+  receiverId     String?
+  receiver       User?     @relation("receivedMessages", fields: [receiverId], references: [id])
+  text           String
+  system         Boolean   @default(false)
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+
+
+

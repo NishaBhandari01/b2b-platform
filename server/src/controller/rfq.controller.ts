@@ -60,7 +60,13 @@ export const getRFQById = async (req: AuthRequest, res: Response) => {
     }
 
     const includeQuotes = req.user?.role === "buyer";
-    const rfq = await rfqService.getRFQById(rfqId, includeQuotes);
+    const includeMessages =
+      req.user?.role === "buyer" || req.user?.role === "supplier";
+    const rfq = await rfqService.getRFQById(
+      rfqId,
+      includeQuotes,
+      includeMessages,
+    );
 
     if (!rfq) {
       return res.status(404).json({
@@ -157,6 +163,111 @@ export const updateQuotationStatus = async (
       success: true,
       message: "Quotation status updated",
       data: updatedQuotation,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const updateRFQ = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== "buyer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only buyers can update RFQs",
+      });
+    }
+
+    const rfqId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const updatedRFQ = await rfqService.updateRFQ(
+      rfqId,
+      req.user!.id,
+      req.body,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "RFQ updated successfully",
+      data: updatedRFQ,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const deleteRFQ = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== "buyer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only buyers can delete RFQs",
+      });
+    }
+
+    const rfqId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    await rfqService.deleteRFQ(rfqId, req.user!.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "RFQ deleted successfully",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const getRFQMessages = async (req: AuthRequest, res: Response) => {
+  try {
+    const rfqId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const messages = await rfqService.getRFQMessages(rfqId, req.user!.id);
+
+    return res.status(200).json({
+      success: true,
+      data: messages,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: (err as Error).message,
+    });
+  }
+};
+
+export const createMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const rfqId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const message = await rfqService.createMessage({
+      rfqId,
+      senderId: req.user!.id,
+      receiverId: req.body.receiverId,
+      text: req.body.text,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Message sent",
+      data: message,
     });
   } catch (err) {
     return res.status(500).json({

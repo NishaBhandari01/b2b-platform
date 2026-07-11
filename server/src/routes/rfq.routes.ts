@@ -63,12 +63,18 @@ import {
   getRFQById,
   createQuotation,
   updateQuotationStatus,
+  updateRFQ,
+  deleteRFQ,
+  getRFQMessages,
+  createMessage,
 } from "../controller/rfq.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import {
   createRFQSchema,
+  updateRFQSchema,
   createQuotationSchema,
+  sendMessageSchema,
   updateQuotationStatusSchema,
 } from "../validator/rfq.validator.js";
 
@@ -190,6 +196,8 @@ const router = express.Router();
 router.post("/", authenticate, validate(createRFQSchema), createRFQ);
 router.get("/", authenticate, getAllRFQs);
 router.get("/:id", authenticate, getRFQById);
+router.patch("/:id", authenticate, validate(updateRFQSchema), updateRFQ);
+router.delete("/:id", authenticate, deleteRFQ);
 router.post(
   "/:id/quotations",
   authenticate,
@@ -201,6 +209,13 @@ router.patch(
   authenticate,
   validate(updateQuotationStatusSchema),
   updateQuotationStatus,
+);
+router.get("/:id/messages", authenticate, getRFQMessages);
+router.post(
+  "/:id/messages",
+  authenticate,
+  validate(sendMessageSchema),
+  createMessage,
 );
 
 export default router;

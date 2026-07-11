@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Package, Zap, FileText, MessageSquare, TrendingUp, Store, LogOut } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useQuery } from '@tanstack/react-query'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 const menuItems = [
   { label: 'Dashboard', href: '/supplier', icon: LayoutDashboard },
@@ -17,7 +20,22 @@ const menuItems = [
 
 export function SupplierSidebar() {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, isAuthenticated } = useAuth()
+
+  const { data: unreadData } = useQuery<{ success: boolean; data: { count: number } }>({
+    queryKey: ['unread-count'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/messages/unread-count`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to fetch unread count')
+      return res.json()
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 5000,
+  })
+
+  const unreadCount = unreadData?.data?.count || 0
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen">
@@ -44,14 +62,21 @@ export function SupplierSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
                 isActive
                   ? 'bg-emerald-50 text-emerald-600 border-l-4 border-emerald-600'
                   : 'text-slate-700 hover:bg-slate-50'
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium text-sm">{item.label}</span>
+              <div className="flex items-center gap-3">
+                <Icon className="w-5 h-5" />
+                <span className="font-medium text-sm">{item.label}</span>
+              </div>
+              {item.label === 'Messages' && unreadCount > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
           )
         })}

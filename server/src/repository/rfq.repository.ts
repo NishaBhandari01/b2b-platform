@@ -15,29 +15,81 @@ export class RFQRepository {
     });
   }
 
-  async getRFQById(rfqId: string, includeQuotations = false) {
+  async getRFQById(
+    rfqId: string,
+    options: {
+      includeQuotations?: boolean;
+      includeMessages?: boolean;
+      includeUser?: boolean;
+    } = {},
+  ) {
+    const { includeQuotations, includeMessages, includeUser } = options;
+
     return await prisma.rfq.findUnique({
       where: {
         id: rfqId,
       },
-      include: includeQuotations
-        ? {
-            quotations: {
-              include: {
-                supplier: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
+      include: {
+        ...(includeQuotations
+          ? {
+              quotations: {
+                include: {
+                  supplier: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                  conversation: {
+                    select: {
+                      id: true,
+                    },
                   },
                 },
+                orderBy: {
+                  createdAt: "desc",
+                },
               },
-              orderBy: {
-                createdAt: "desc",
+            }
+          : {}),
+        ...(includeMessages
+          ? {
+              messages: {
+                include: {
+                  sender: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                  receiver: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+                orderBy: {
+                  createdAt: "asc",
+                },
               },
-            },
-          }
-        : undefined,
+            }
+          : {}),
+        ...(includeUser
+          ? {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            }
+          : {}),
+      },
     });
   }
 
@@ -87,6 +139,85 @@ export class RFQRepository {
     return await prisma.quotation.create({
       data: quotationData,
     });
+  }
+
+  async updateRFQ(
+    rfqId: string,
+    rfqData: {
+      title?: string;
+      category?: string;
+      quantity?: number;
+      budget?: number;
+      deadline?: Date;
+      description?: string;
+    },
+  ) {
+    return await prisma.rfq.update({
+      where: { id: rfqId },
+      data: rfqData,
+    });
+  }
+
+  async deleteRFQ(rfqId: string) {
+    return await prisma.rfq.delete({
+      where: { id: rfqId },
+    });
+  }
+
+  async getRFQMessages(rfqId: string, participantId: string) {
+    return await prisma.message.findMany({
+      where: {
+        rfqId,
+        OR: [
+          {
+            senderId: participantId,
+          },
+          {
+            receiverId: participantId,
+          },
+        ],
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+  }
+
+  async createMessage(messageData: {
+    rfqId: string;
+    senderId: string;
+    receiverId: string;
+    text: string;
+  }) {
+    return await prisma.message.create({
+      data: messageData,
+    });
+  }
+
+  async hasSupplierQuotation(rfqId: string, supplierId: string) {
+    const count = await prisma.quotation.count({
+      where: {
+        rfqId,
+        supplierId,
+      },
+    });
+    return count > 0;
   }
 
   async getQuotationById(quotationId: string) {

@@ -19,12 +19,83 @@ export class RFQService {
     return await this.rfqRepository.createRFQ(rfqData);
   }
 
-  async getRFQById(rfqId: string, includeQuotations = false) {
-    return await this.rfqRepository.getRFQById(rfqId, includeQuotations);
+  async getRFQById(
+    rfqId: string,
+    includeQuotations = false,
+    includeMessages = false,
+  ) {
+    return await this.rfqRepository.getRFQById(rfqId, {
+      includeQuotations,
+      includeMessages,
+      includeUser: true,
+    });
   }
 
   async getUserRFQs(userId: string, role: string) {
     return await this.rfqRepository.getUserRFQs(userId, role);
+  }
+
+  async updateRFQ(
+    rfqId: string,
+    buyerId: string,
+    rfqData: {
+      title?: string;
+      category?: string;
+      quantity?: number;
+      budget?: number;
+      deadline?: Date;
+      description?: string;
+    },
+  ) {
+    const rfq = await this.rfqRepository.getRFQById(rfqId);
+    if (!rfq) {
+      throw new Error("RFQ not found");
+    }
+    if (rfq.userId !== buyerId) {
+      throw new Error("Only the RFQ owner can update this RFQ");
+    }
+    if (rfq.status === "closed") {
+      throw new Error("Cannot update a closed RFQ");
+    }
+
+    return await this.rfqRepository.updateRFQ(rfqId, rfqData);
+  }
+
+  async deleteRFQ(rfqId: string, buyerId: string) {
+    const rfq = await this.rfqRepository.getRFQById(rfqId);
+    if (!rfq) {
+      throw new Error("RFQ not found");
+    }
+    if (rfq.userId !== buyerId) {
+      throw new Error("Only the RFQ owner can delete this RFQ");
+    }
+
+    return await this.rfqRepository.deleteRFQ(rfqId);
+  }
+
+  async getRFQMessages(rfqId: string, participantId: string) {
+    return await this.rfqRepository.getRFQMessages(rfqId, participantId);
+  }
+
+  async createMessage(payload: {
+    rfqId: string;
+    senderId: string;
+    receiverId: string;
+    text: string;
+  }) {
+    const rfq = await this.rfqRepository.getRFQById(payload.rfqId);
+    if (!rfq) {
+      throw new Error("RFQ not found");
+    }
+
+    const isBuyerSender = payload.senderId === rfq.userId;
+    const isBuyerReceiver = payload.receiverId === rfq.userId;
+
+    if (!isBuyerSender && !isBuyerReceiver) {
+      throw new Error("Message must involve the RFQ buyer");
+    }
+
+    return await this.rfqRepository.createMessage(payload);
   }
 
   async createQuotation(payload: {
@@ -40,6 +111,15 @@ export class RFQService {
     }
     if (rfq.status !== "published") {
       throw new Error("Cannot submit a quotation for a closed RFQ");
+    }
+    const alreadyQuoted = await this.rfqRepository.hasSupplierQuotation(
+      payload.rfqId,
+      payload.supplierId,
+    );
+    if (alreadyQuoted) {
+      throw new Error(
+        "A quotation has already been submitted by this supplier",
+      );
     }
 
     return await this.rfqRepository.createQuotation(payload);

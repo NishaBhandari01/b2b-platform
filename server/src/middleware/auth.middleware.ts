@@ -20,7 +20,11 @@ export const authenticate = (
   const tokenFromCookie = req.cookies?.accessToken;
   const token = tokenFromHeader || tokenFromCookie;
 
+  console.log(`[Auth] Checking route ${req.method} ${req.originalUrl}`);
+  console.log(`[Auth] Header token: ${!!tokenFromHeader}, Cookie token: ${!!tokenFromCookie}`);
+
   if (!token) {
+    console.log(`[Auth] Unauthorized: No token found`);
     return res.status(401).json({
       success: false,
       message: "Unauthorized",
@@ -39,7 +43,8 @@ export const authenticate = (
     req.user = decoded;
 
     next();
-  } catch {
+  } catch (err: any) {
+    console.log(`[Auth] Invalid token: ${err.message}`);
     return res.status(401).json({
       success: false,
       message: "Invalid token",

@@ -1,207 +1,165 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/lib/hooks/useToast";
-import { Send, Clock } from "lucide-react";
+import { MessageSquare, Clock } from "lucide-react";
+import RFQChat from "@/components/RFQChat";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+interface ConversationItem {
+  id: string;
+  unreadCount: number;
+  quotation: {
+    rfqId: string;
+    supplierId: string;
+    rfq: { id: string; title: string };
+    supplier: { id: string; name: string; email: string };
+  };
+  messages: Array<{
+    id: string;
+    text: string;
+    createdAt: string;
+    sender?: { name: string } | null;
+  }>;
+}
+
+interface CurrentUser {
+  id: string;
+  role: "buyer" | "supplier";
+  name: string;
+}
 
 export default function BuyerMessages() {
-  const { success } = useToast();
-  const [conversations, setConversations] = useState([
-    {
-      id: 1,
-      supplier: "Premium Industrial Solutions",
-      lastMessage: "Can we reduce the unit price for bulk orders?",
-      timestamp: "5 min ago",
-      unread: true,
-      avatar: "PIS",
-      messages: [
-        {
-          id: 1,
-          sender: "supplier",
-          text: "Can we reduce the unit price for bulk orders?",
-          time: "10:24 AM",
-        },
-        {
-          id: 2,
-          sender: "buyer",
-          text: "We are evaluating 3 shortlisted vendors.",
-          time: "10:26 AM",
-        },
-      ],
+  const queryClient = useQueryClient();
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  // Fetch current user info from auth cookie
+  useEffect(() => {
+    fetch(`${API_URL}/api/auth/me`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setCurrentUser(d.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch all conversations for this buyer
+  const { data: conversations = [] } = useQuery<ConversationItem[]>({
+    queryKey: ["conversations"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/conversations`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to load");
+      return data.data;
     },
-    {
-      id: 2,
-      supplier: "Global Materials Inc",
-      lastMessage: "Your quotation has been approved. Delivery: 2 weeks",
-      timestamp: "2 hours ago",
-      unread: false,
-      avatar: "GMI",
-      messages: [
-        {
-          id: 1,
-          sender: "supplier",
-          text: "Your quotation has been approved. Delivery: 2 weeks.",
-          time: "08:10 AM",
-        },
-      ],
-    },
-    {
-      id: 3,
-      supplier: "Tech Components Ltd",
-      lastMessage: "We have stock available for immediate shipment",
-      timestamp: "1 day ago",
-      unread: false,
-      avatar: "TCL",
-      messages: [
-        {
-          id: 1,
-          sender: "supplier",
-          text: "We have stock available for immediate shipment.",
-          time: "Yesterday",
-        },
-      ],
-    },
-  ]);
+    refetchInterval: 5000,
+  });
 
-  const [selectedConversation, setSelectedConversation] = useState<
-    number | null
-  >(1);
-  const [messageText, setMessageText] = useState("");
+  const selectedConv = conversations.find((c) => c.id === selectedConvId);
 
-  const handleSendMessage = () => {
-    if (!selectedConversation || !messageText.trim()) return;
-
-    const conversationName =
-      conversations.find(
-        (conversation) => conversation.id === selectedConversation,
-      )?.supplier || "supplier";
-
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === selectedConversation
-          ? {
-              ...conversation,
-              lastMessage: messageText.trim(),
-              unread: false,
-              timestamp: "Just now",
-              messages: [
-                ...conversation.messages,
-                {
-                  id: Date.now(),
-                  sender: "buyer",
-                  text: messageText.trim(),
-                  time: "Just now",
-                },
-              ],
-            }
-          : conversation,
-      ),
-    );
-    setMessageText("");
-    success("Message sent", `Your note was shared with ${conversationName}.`);
-  };
+  const totalUnread = conversations.reduce(
+    (sum, c) => sum + (c.unreadCount || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Messages</h1>
+        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+          Messages
+          {totalUnread > 0 && (
+            <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold text-white bg-red-500 rounded-full">
+              {totalUnread > 99 ? "99+" : totalUnread}
+            </span>
+          )}
+        </h1>
         <p className="text-slate-600 mt-1">
-          Communicate directly with suppliers
+          Communicate directly with suppliers about your RFQs
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 h-96">
-        {/* Conversations List */}
-        <div className="col-span-1">
-          <Card className="p-0 h-full overflow-hidden flex flex-col">
-            <div className="p-4 border-b">
-              <h2 className="font-semibold text-slate-900">Conversations</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {conversations.map((conv) => (
-                <button
-                  key={conv.id}
-                  onClick={() => setSelectedConversation(conv.id)}
-                  className={`w-full text-left p-4 border-b hover:bg-slate-50 transition-colors ${
-                    selectedConversation === conv.id
-                      ? "bg-purple-50 border-l-4 border-l-purple-600"
-                      : ""
-                  } ${conv.unread ? "bg-blue-50" : ""}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {conv.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`font-semibold text-slate-900 truncate ${conv.unread ? "font-bold" : ""}`}
-                      >
-                        {conv.supplier}
-                      </p>
-                      <p className="text-sm text-slate-600 truncate">
-                        {conv.lastMessage}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Chat Area */}
-        <div className="col-span-2">
-          {selectedConversation ? (
-            <Card className="p-0 h-full flex flex-col">
-              <div className="p-4 border-b">
-                <h2 className="font-semibold text-slate-900">
-                  {
-                    conversations.find((c) => c.id === selectedConversation)
-                      ?.supplier
-                  }
-                </h2>
+      <div className="grid grid-cols-3 gap-6" style={{ height: "540px" }}>
+        {/* Conversation list */}
+        <Card className="col-span-1 p-0 overflow-hidden flex flex-col">
+          <div className="p-4 border-b bg-slate-50">
+            <h2 className="font-semibold text-slate-900">Conversations</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y">
+            {conversations.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-sm">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                No conversations yet.
+                <br />
+                View an RFQ and message a supplier.
               </div>
-              <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-                {conversations
-                  .find(
-                    (conversation) => conversation.id === selectedConversation,
-                  )
-                  ?.messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.sender === "buyer" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-xs rounded-lg p-3 ${message.sender === "buyer" ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-900"}`}
-                      >
-                        <p className="text-sm">{message.text}</p>
-                        <p className="mt-1 text-xs opacity-70">
-                          {message.time}
+            ) : (
+              conversations.map((conv) => {
+                const lastMsg = conv.messages[0];
+                const isActive = selectedConvId === conv.id;
+                return (
+                  <button
+                    key={conv.id}
+                    onClick={() => setSelectedConvId(conv.id)}
+                    className={`w-full text-left p-4 hover:bg-slate-50 transition-colors ${
+                      isActive
+                        ? "bg-purple-50 border-l-4 border-l-purple-600"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                        {conv.quotation.supplier.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p
+                            className={`text-sm truncate ${
+                              conv.unreadCount > 0
+                                ? "font-bold text-slate-900"
+                                : "font-medium text-slate-700"
+                            }`}
+                          >
+                            {conv.quotation.supplier.name}
+                          </p>
+                          {conv.unreadCount > 0 && (
+                            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-bold text-white bg-red-500 rounded-full shrink-0">
+                              {conv.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 truncate">
+                          {conv.quotation.rfq.title}
                         </p>
+                        {lastMsg && (
+                          <p className="text-xs text-slate-400 truncate mt-0.5">
+                            {lastMsg.sender?.name}: {lastMsg.text}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  ))}
-              </div>
-              <div className="p-4 border-t">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                    placeholder="Type your message..."
-                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
                   </button>
-                </div>
-              </div>
-            </Card>
+                );
+              })
+            )}
+          </div>
+        </Card>
+
+        {/* Chat area */}
+        <div className="col-span-2">
+          {selectedConv && currentUser ? (
+            <RFQChat
+              conversationId={selectedConv.id}
+              currentUserId={currentUser.id}
+              currentUserRole="buyer"
+              rfqId={selectedConv.quotation.rfqId}
+              supplierId={selectedConv.quotation.supplierId}
+              otherPartyName={selectedConv.quotation.supplier.name}
+            />
           ) : (
             <Card className="p-8 flex items-center justify-center h-full">
               <div className="text-center">
