@@ -6,8 +6,24 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useToast } from "@/lib/hooks/useToast";
-import { Mail, Lock, User, UserCheck, ArrowRight } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  User,
+  UserCheck,
+  ArrowRight,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { UserRole } from "@/types";
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  terms?: string;
+}
 
 function RegisterPageContent() {
   const router = useRouter();
@@ -22,28 +38,103 @@ function RegisterPageContent() {
   const [role, setRole] = useState<UserRole>(
     (searchParams.get("role") as UserRole) || "buyer",
   );
-  const [error, setError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitError, setSubmitError] = useState("");
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateField = (
+    field: keyof FormErrors,
+    values = { name, email, password, confirmPassword },
+  ) => {
+    switch (field) {
+      case "name":
+        if (!values.name.trim()) return "Name is required";
+        if (values.name.trim().length < 2)
+          return "Name must be at least 2 characters";
+        return undefined;
+      case "email":
+        if (!values.email.trim()) return "Email is required";
+        if (!emailRegex.test(values.email))
+          return "Enter a valid email address";
+        return undefined;
+      case "password":
+        if (!values.password) return "Password is required";
+        if (values.password.length < 8)
+          return "Password must be at least 8 characters";
+        if (!/[A-Z]/.test(values.password))
+          return "Include at least one uppercase letter";
+        if (!/[0-9]/.test(values.password))
+          return "Include at least one number";
+        return undefined;
+      case "confirmPassword":
+        if (!values.confirmPassword) return "Please confirm your password";
+        if (values.confirmPassword !== values.password)
+          return "Passwords do not match";
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
+
+  const validateAll = () => {
+    const values = { name, email, password, confirmPassword };
+    const newErrors: FormErrors = {
+      name: validateField("name", values),
+      email: validateField("email", values),
+      password: validateField("password", values),
+      confirmPassword: validateField("confirmPassword", values),
+      terms: !agreedToTerms
+        ? "You must agree to the terms and conditions"
+        : undefined,
+    };
+    setErrors(newErrors);
+    setTouched({
+      name: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+      terms: true,
+    });
+    return !Object.values(newErrors).some(Boolean);
+  };
+
+  const handleBlur = (field: keyof FormErrors) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setErrors((prev) => ({ ...prev, [field]: validateField(field) }));
+  };
+
+  const handleChange = (field: keyof FormErrors, value: string) => {
+    if (field === "name") setName(value);
+    if (field === "email") setEmail(value);
+    if (field === "password") setPassword(value);
+    if (field === "confirmPassword") setConfirmPassword(value);
+
+    // Re-validate live once a field has been touched, so errors clear as the user fixes them
+    if (touched[field]) {
+      const values = { name, email, password, confirmPassword, [field]: value };
+      setErrors((prev) => ({ ...prev, [field]: validateField(field, values) }));
+
+      // Confirm password depends on password, so keep it in sync too
+      if (field === "password" && touched.confirmPassword) {
+        setErrors((prev) => ({
+          ...prev,
+          confirmPassword: validateField("confirmPassword", values),
+        }));
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setSubmitError("");
 
-    // Validation
-    if (!name || !email || !password || !confirmPassword) {
-      setError("Please fill in all fields");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (!agreedToTerms) {
-      setError("You must agree to the terms and conditions");
-      return;
-    }
+    if (!validateAll()) return;
 
     try {
       await signup(email, password, name, role);
@@ -59,13 +150,20 @@ function RegisterPageContent() {
       );
       router.push(dashboardUrl);
     } catch (err) {
-      setError("Registration failed. Please try again.");
+      setSubmitError("Registration failed. Please try again.");
       showError(
         "Registration failed",
         "Please try again with a different email.",
       );
     }
   };
+
+  const fieldClasses = (hasError: boolean) =>
+    `w-full pl-10 pr-10 py-2 bg-background rounded-lg border focus:outline-none focus:ring-2 ${
+      hasError
+        ? "border-red-500 focus:ring-red-500"
+        : "border-input focus:ring-primary"
+    }`;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-primary/10 via-background to-background flex items-center justify-center px-4 py-8">
@@ -83,7 +181,7 @@ function RegisterPageContent() {
 
         {/* Form */}
         <div className="bg-card rounded-lg border border-border p-8 shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Role Selection */}
             <div>
               <label className="block text-sm font-medium mb-3">
@@ -129,13 +227,17 @@ function RegisterPageContent() {
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
-                  required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  onBlur={() => handleBlur("name")}
                   placeholder="John Doe"
-                  className="w-full pl-10 pr-4 py-2 bg-background rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-invalid={!!errors.name}
+                  className={fieldClasses(!!(touched.name && errors.name))}
                 />
               </div>
+              {touched.name && errors.name && (
+                <p className="text-xs text-red-600 mt-1">{errors.name}</p>
+              )}
             </div>
 
             {/* Email */}
@@ -147,13 +249,17 @@ function RegisterPageContent() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="email"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  onBlur={() => handleBlur("email")}
                   placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-2 bg-background rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-invalid={!!errors.email}
+                  className={fieldClasses(!!(touched.email && errors.email))}
                 />
               </div>
+              {touched.email && errors.email && (
+                <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+              )}
             </div>
 
             {/* Password */}
@@ -162,14 +268,37 @@ function RegisterPageContent() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type="password"
-                  required
+                  type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  onBlur={() => handleBlur("password")}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2 bg-background rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-invalid={!!errors.password}
+                  className={fieldClasses(
+                    !!(touched.password && errors.password),
+                  )}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
               </div>
+              {touched.password && errors.password ? (
+                <p className="text-xs text-red-600 mt-1">{errors.password}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  At least 8 characters, one uppercase letter and one number
+                </p>
+              )}
             </div>
 
             {/* Confirm Password */}
@@ -180,42 +309,80 @@ function RegisterPageContent() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type="password"
-                  required
+                  type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) =>
+                    handleChange("confirmPassword", e.target.value)
+                  }
+                  onBlur={() => handleBlur("confirmPassword")}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2 bg-background rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-invalid={!!errors.confirmPassword}
+                  className={fieldClasses(
+                    !!(touched.confirmPassword && errors.confirmPassword),
+                  )}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
               </div>
+              {touched.confirmPassword && errors.confirmPassword && (
+                <p className="text-xs text-red-600 mt-1">
+                  {errors.confirmPassword}
+                </p>
+              )}
             </div>
 
-            {/* Error Message */}
-            {error && (
+            {/* Submit-level Error Message */}
+            {submitError && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600">
-                {error}
+                {submitError}
               </div>
             )}
 
             {/* Terms */}
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="w-4 h-4 rounded border-input mt-1"
-              />
-              <span className="text-sm text-muted-foreground">
-                I agree to the{" "}
-                <Link href="#" className="text-primary hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="#" className="text-primary hover:underline">
-                  Privacy Policy
-                </Link>
-              </span>
-            </label>
+            <div>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => {
+                    setAgreedToTerms(e.target.checked);
+                    setErrors((prev) => ({
+                      ...prev,
+                      terms: e.target.checked
+                        ? undefined
+                        : "You must agree to the terms and conditions",
+                    }));
+                  }}
+                  className="w-4 h-4 rounded border-input mt-1"
+                />
+                <span className="text-sm text-muted-foreground">
+                  I agree to the{" "}
+                  <Link href="#" className="text-primary hover:underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="#" className="text-primary hover:underline">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+              {touched.terms && errors.terms && (
+                <p className="text-xs text-red-600 mt-1">{errors.terms}</p>
+              )}
+            </div>
 
             {/* Submit Button */}
             <Button type="submit" className="w-full gap-2" disabled={isLoading}>

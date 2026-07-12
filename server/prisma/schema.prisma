@@ -94,6 +94,9 @@ model Message {
   receiver       User?     @relation("receivedMessages", fields: [receiverId], references: [id])
   text           String
   system         Boolean   @default(false)
+  isLiked        Boolean   @default(false)
+  isEdited       Boolean   @default(false)
+  isDeleted      Boolean   @default(false)
   deliveredAt    DateTime?
   readAt         DateTime?
   createdAt      DateTime  @default(now())

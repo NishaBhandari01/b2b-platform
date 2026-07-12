@@ -6,7 +6,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useToast } from "@/lib/hooks/useToast";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,10 +20,69 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateField = (
+    field: keyof FormErrors,
+    values = { email, password },
+  ) => {
+    switch (field) {
+      case "email":
+        if (!values.email.trim()) return "Email is required";
+        if (!emailRegex.test(values.email))
+          return "Enter a valid email address";
+        return undefined;
+      case "password":
+        if (!values.password) return "Password is required";
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
+
+  const validateAll = () => {
+    const newErrors: FormErrors = {
+      email: validateField("email"),
+      password: validateField("password"),
+    };
+    setErrors(newErrors);
+    setTouched({ email: true, password: true });
+    return !Object.values(newErrors).some(Boolean);
+  };
+
+  const handleBlur = (field: keyof FormErrors) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setErrors((prev) => ({ ...prev, [field]: validateField(field) }));
+  };
+
+  const handleChange = (field: keyof FormErrors, value: string) => {
+    if (field === "email") setEmail(value);
+    if (field === "password") setPassword(value);
+
+    if (touched[field]) {
+      const values = { email, password, [field]: value };
+      setErrors((prev) => ({ ...prev, [field]: validateField(field, values) }));
+    }
+  };
+
+  const fieldClasses = (hasError: boolean) =>
+    `w-full pl-10 pr-10 py-2 bg-background rounded-lg border focus:outline-none focus:ring-2 ${
+      hasError
+        ? "border-red-500 focus:ring-red-500"
+        : "border-input focus:ring-primary"
+    }`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!validateAll()) return;
+
     try {
       const userData = await login(email, password);
       const role = userData?.role || user?.role || "buyer";
@@ -57,7 +121,7 @@ export default function LoginPage() {
 
         {/* Form */}
         <div className="bg-card rounded-lg border border-border p-8 shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {/* Email */}
             <div>
               <label className="block text-sm font-medium mb-2">
@@ -67,13 +131,19 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="email"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  onBlur={() => handleBlur("email")}
                   placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-2 bg-background rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-invalid={!!errors.email}
+                  className={fieldClasses(
+                    !!(touched.email && errors.email),
+                  ).replace("pr-10", "pr-4")}
                 />
               </div>
+              {touched.email && errors.email && (
+                <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+              )}
             </div>
 
             {/* Password */}
@@ -82,14 +152,33 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type="password"
-                  required
+                  type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  onBlur={() => handleBlur("password")}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2 bg-background rounded-lg border border-input focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-invalid={!!errors.password}
+                  className={fieldClasses(
+                    !!(touched.password && errors.password),
+                  )}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
               </div>
+              {touched.password && errors.password && (
+                <p className="text-xs text-red-600 mt-1">{errors.password}</p>
+              )}
             </div>
 
             {/* Error Message */}
