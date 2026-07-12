@@ -18,6 +18,10 @@ interface AuthContextType {
     role: UserRole,
   ) => Promise<User>;
   googleLogin: (email: string, name: string) => Promise<User>;
+  forgotPassword: (email: string) => Promise<string>;
+  isForgotPasswordLoading: boolean;
+  resetPassword: (token: string, password: string) => Promise<string>;
+  isResetPasswordLoading: boolean;
   isAuthenticated: boolean;
 }
 
@@ -136,6 +140,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const forgotPasswordMutation = useMutation<string, Error, { email: string }>({
+    mutationFn: async ({ email }) => {
+      const response = await request<{
+        success: boolean;
+        message: string;
+      }>("/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      return response.message;
+    },
+  });
+
+  const resetPasswordMutation = useMutation<
+    string,
+    Error,
+    { token: string; password: string }
+  >({
+    mutationFn: async ({ token, password }) => {
+      const response = await request<{
+        success: boolean;
+        message: string;
+      }>("/reset-password", {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+          password,
+        }),
+      });
+
+      return response.message;
+    },
+  });
+
   const login = async (email: string, password: string) => {
     return loginMutation.mutateAsync({ email, password });
   };
@@ -157,6 +195,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return googleMutation.mutateAsync({ email, name });
   };
 
+  const forgotPassword = async (email: string) => {
+    return forgotPasswordMutation.mutateAsync({ email });
+  };
+
+  const resetPassword = async (token: string, password: string) => {
+    return resetPasswordMutation.mutateAsync({
+      token,
+      password,
+    });
+  };
+
   const value = useMemo<AuthContextType>(
     () => ({
       user: authQuery.data ?? null,
@@ -170,6 +219,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       signup,
       googleLogin,
+      forgotPassword,
+      isForgotPasswordLoading: forgotPasswordMutation.isPending,
+      resetPassword,
+      isResetPasswordLoading: resetPasswordMutation.isPending,
       isAuthenticated: !!authQuery.data,
     }),
     [
@@ -179,6 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signupMutation.isPending,
       logoutMutation.isPending,
       googleMutation.isPending,
+      forgotPasswordMutation.isPending,
+      resetPasswordMutation.isPending,
     ],
   );
 

@@ -1,7 +1,11 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { UserRole } from "@prisma/client";
 import { AuthRepository } from "../repository/auth.repository.js";
+import { sendEmail } from "../utils/mail.js";
+import { resetPasswordEmail } from "../templates/resetPasswordEmail.js";
+import { generateResetToken } from "../utils/token.js";
 
 const authRepository = new AuthRepository();
 
@@ -123,6 +127,152 @@ export class AuthService {
     }
 
     return createSessionPayload(user);
+  }
+
+  // async forgotPassword(email: string) {
+  //   const user = await authRepository.findUserByEmail(email);
+
+  //   /**
+  //    * Never reveal whether an email exists.
+  //    * This prevents email enumeration attacks.
+  //    */
+  //   if (!user) {
+  //     return {
+  //       message:
+  //         "If an account with that email exists, a password reset link has been sent.",
+  //     };
+  //   }
+
+  //   const { token, hashedToken } = generateResetToken();
+
+  //   const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+  //   await authRepository.saveResetToken(user.id, hashedToken, expires);
+
+  //   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  //   await sendEmail(
+  //     user.email,
+  //     "Reset Your Password",
+  //     resetPasswordEmail(user.name, resetLink),
+  //   );
+
+  //   return {
+  //     message:
+  //       "If an account with that email exists, a password reset link has been sent.",
+  //   };
+  // }
+
+  // async forgotPassword(email: string) {
+  //   console.log("Forgot password requested for:", email);
+
+  //   const user = await authRepository.findUserByEmail(email);
+
+  //   console.log("User found:", user);
+
+  //   if (!user) {
+  //     return {
+  //       message:
+  //         "If an account with that email exists, a password reset link has been sent.",
+  //     };
+  //   }
+
+  //   const { token, hashedToken } = generateResetToken();
+
+  //   console.log("Generated Token:", token);
+  //   console.log("Generated Hash:", hashedToken);
+
+  //   const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+  //   await authRepository.saveResetToken(user.id, hashedToken, expires);
+
+  //   console.log("✅ Reset token saved");
+
+  //   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  //   console.log("Reset Link:", resetLink);
+
+  //   await sendEmail(
+  //     user.email,
+  //     "Reset Your Password",
+  //     resetPasswordEmail(user.name, resetLink),
+  //   );
+
+  //   console.log("✅ Email sent");
+
+  //   return {
+  //     message:
+  //       "If an account with that email exists, a password reset link has been sent.",
+  //   };
+  // }
+
+  async forgotPassword(email: string) {
+    console.log("========== FORGOT PASSWORD ==========");
+    email = email.trim().toLowerCase();
+    console.log("Email:", email);
+
+    const user = await authRepository.findUserByEmail(email);
+
+    console.log("User:", user);
+
+    if (!user) {
+      console.log("❌ User not found");
+
+      return {
+        message:
+          "If an account with that email exists, a password reset link has been sent.",
+      };
+    }
+
+    const { token, hashedToken } = generateResetToken();
+
+    console.log("Token:", token);
+    console.log("Hash:", hashedToken);
+
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+    console.log("Saving token...");
+
+    await authRepository.saveResetToken(user.id, hashedToken, expires);
+
+    console.log("✅ Token saved");
+
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    console.log("Reset Link:", resetLink);
+
+    await sendEmail(
+      user.email,
+      "Reset Password",
+      resetPasswordEmail(user.name, resetLink),
+    );
+
+    console.log("✅ Email sent");
+
+    return {
+      message:
+        "If an account with that email exists, a password reset link has been sent.",
+    };
+  }
+
+  async resetPassword(token: string, password: string) {
+    console.log("Incoming token:", token);
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    console.log("Hashed token:", hashedToken);
+    const user = await authRepository.findByResetToken(hashedToken);
+    console.log("User found:", user);
+
+    if (!user) {
+      throw new Error("Invalid or expired reset link.");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await authRepository.updatePassword(user.id, hashedPassword);
+
+    return {
+      message: "Password reset successfully.",
+    };
   }
 }
 

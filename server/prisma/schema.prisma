@@ -13,6 +13,11 @@ model User {
   email       String      @unique
   password    String
   role        UserRole    @default(buyer)
+
+  // password Reset Fields
+  resetPasswordToken String?
+  resetPasswordExpires DateTime?
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   rfqs            Rfq[]

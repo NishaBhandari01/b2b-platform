@@ -80,5 +80,16 @@ router.post("/logout", authenticate, (req, res) =>
   authController.logout(req, res),
 );
 router.post("/google", (req, res) => authController.google(req, res));
+// router.post("/forgot-password", (req, res) =>
+//   authController.forgetPassword(req, res),
+// );
+
+router.post("/forgot-password", (req, res) =>
+  authController.forgotPassword(req, res),
+);
+
+router.post("/reset-password", (req, res) =>
+  authController.resetPassword(req, res),
+);
 
 export default router;

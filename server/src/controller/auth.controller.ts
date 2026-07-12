@@ -3,9 +3,12 @@ import {
   registerSchema,
   LoginSchema,
   GoogleAuthSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
 } from "../validator/auth.validator.js";
 import { authService } from "../services/auth.service.js";
 import { AuthRequest } from "../middleware/auth.middleware.js";
+import { success } from "zod";
 
 const cookieOptions = {
   httpOnly: true,
@@ -166,6 +169,42 @@ export const google = async (req: AuthRequest, res: Response) => {
       success: true,
       message: "Google sign-in successful",
       data: result,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const forgotPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const body = ForgotPasswordSchema.parse(req.body);
+
+    const result = await authService.forgotPassword(body.email);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const resetPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const body = ResetPasswordSchema.parse(req.body);
+
+    const result = await authService.resetPassword(body.token, body.password);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
     });
   } catch (error: any) {
     return res.status(400).json({
