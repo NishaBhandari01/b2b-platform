@@ -3,7 +3,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Send, Check, CheckCheck, MoreVertical, Heart, Edit2, Trash2, X } from "lucide-react";
+import {
+  Send,
+  Check,
+  CheckCheck,
+  MoreVertical,
+  Heart,
+  Edit2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useToast } from "@/lib/hooks/useToast";
 import socketIO from "socket.io-client";
 
@@ -44,13 +53,7 @@ interface RFQChatProps {
   otherPartyName?: string;
 }
 
-function MessageStatus({
-  msg,
-  isMine,
-}: {
-  msg: Message;
-  isMine: boolean;
-}) {
+function MessageStatus({ msg, isMine }: { msg: Message; isMine: boolean }) {
   if (!isMine) return null;
   if (msg.readAt)
     return (
@@ -99,6 +102,7 @@ export default function RFQChat({
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey,
     queryFn: async () => {
+      console.log("🔥 GET /messages API called");
       const res = await fetch(`${API_URL}/api/messages/${conversationId}`, {
         credentials: "include",
       });
@@ -107,7 +111,6 @@ export default function RFQChat({
       return data.data as Message[];
     },
     enabled: !!conversationId,
-    refetchInterval: 5000,
   });
 
   // Auto-scroll to newest message
@@ -136,6 +139,13 @@ export default function RFQChat({
     if (!conversationId) return;
 
     const socket = socketIO(API_URL, { withCredentials: true } as any);
+    socket.on("connect", () => {
+      console.log("🟢 Socket Connected:", socket.id);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("🔴 Socket Disconnected");
+    });
     socketRef.current = socket as any;
 
     socket.emit("joinConversation", conversationId);
@@ -156,7 +166,9 @@ export default function RFQChat({
 
     socket.on("message:delivered", (msg: Message) => {
       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
-        prev.map((m) => (m.id === msg.id ? { ...m, deliveredAt: msg.deliveredAt } : m)),
+        prev.map((m) =>
+          m.id === msg.id ? { ...m, deliveredAt: msg.deliveredAt } : m,
+        ),
       );
     });
 
@@ -172,17 +184,30 @@ export default function RFQChat({
       );
     });
 
-    socket.on("messages:all-read", ({ conversationId: cid }: { conversationId: string }) => {
-      if (cid === conversationId) {
-        queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
-          prev.map((m) =>
-            m.senderId === currentUserId ? { ...m, readAt: new Date().toISOString() } : m,
-          ),
-        );
-      }
-    });
+    socket.on(
+      "messages:all-read",
+      ({ conversationId: cid }: { conversationId: string }) => {
+        if (cid === conversationId) {
+          queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
+            prev.map((m) =>
+              m.senderId === currentUserId
+                ? { ...m, readAt: new Date().toISOString() }
+                : m,
+            ),
+          );
+        }
+      },
+    );
 
     return () => {
+      // socket.disconnect();
+      // socketRef.current = null;
+      socket.off("message:new");
+      socket.off("message:delivered");
+      socket.off("message:read");
+      socket.off("message:updated");
+      socket.off("messages:all-read");
+
       socket.disconnect();
       socketRef.current = null;
     };
@@ -203,7 +228,7 @@ export default function RFQChat({
     },
     onSuccess: () => {
       setMessageText("");
-      queryClient.invalidateQueries({ queryKey });
+      // queryClient.invalidateQueries({ queryKey });
       if (!conversationId) {
         queryClient.invalidateQueries({ queryKey: ["rfq"] });
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -216,32 +241,38 @@ export default function RFQChat({
 
   const toggleLikeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${API_URL}/api/messages/${id}/like`, { method: "PATCH", credentials: "include" });
+      const res = await fetch(`${API_URL}/api/messages/${id}/like`, {
+        method: "PATCH",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to like message");
-    }
+    },
   });
 
   const editMessageMutation = useMutation({
-    mutationFn: async ({ id, text }: { id: string, text: string }) => {
+    mutationFn: async ({ id, text }: { id: string; text: string }) => {
       const res = await fetch(`${API_URL}/api/messages/${id}/edit`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text }),
       });
       if (!res.ok) throw new Error("Failed to edit message");
     },
     onSuccess: () => {
       setEditingMessageId(null);
       setMessageText("");
-    }
+    },
   });
 
   const deleteMessageMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${API_URL}/api/messages/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${API_URL}/api/messages/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to delete message");
-    }
+    },
   });
 
   const handleSend = () => {
@@ -272,7 +303,9 @@ export default function RFQChat({
             {otherPartyName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-semibold text-slate-900 text-sm leading-tight">{otherPartyName}</p>
+            <p className="font-semibold text-slate-900 text-sm leading-tight">
+              {otherPartyName}
+            </p>
             <p className="text-xs text-emerald-500 font-medium flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
               Real-time Negotiation
@@ -285,8 +318,12 @@ export default function RFQChat({
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-slate-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl">💬</div>
-            <p className="text-sm font-medium">No messages yet. Send a message to start the negotiation.</p>
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl">
+              💬
+            </div>
+            <p className="text-sm font-medium">
+              No messages yet. Send a message to start the negotiation.
+            </p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -328,8 +365,9 @@ export default function RFQChat({
                   )}
 
                   {/* Message Bubble Container with Actions on Hover */}
-                  <div className={`flex items-center gap-2 ${isMine ? "flex-row-reverse animate-in fade-in slide-in-from-right-2 duration-200" : "flex-row animate-in fade-in slide-in-from-left-2 duration-200"}`}>
-                    
+                  <div
+                    className={`flex items-center gap-2 ${isMine ? "flex-row-reverse animate-in fade-in slide-in-from-right-2 duration-200" : "flex-row animate-in fade-in slide-in-from-left-2 duration-200"}`}
+                  >
                     {/* Message Bubble */}
                     <div
                       className={`px-4 py-2.5 rounded-2xl text-sm relative group/bubble ${
@@ -340,15 +378,19 @@ export default function RFQChat({
                             : "bg-white text-slate-800 rounded-bl-sm shadow-sm border border-slate-200/80"
                       }`}
                     >
-                      <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
-                      
+                      <p className="leading-relaxed whitespace-pre-wrap break-words">
+                        {msg.text}
+                      </p>
+
                       <div
                         className={`flex items-center gap-1 mt-1 justify-end ${
                           isMine ? "text-white/60" : "text-slate-400"
                         }`}
                       >
                         {msg.isEdited && !msg.isDeleted && (
-                          <span className="text-[10px] font-medium italic opacity-85 mr-1">edited</span>
+                          <span className="text-[10px] font-medium italic opacity-85 mr-1">
+                            edited
+                          </span>
                         )}
                         <span className="text-[10px]">{time}</span>
                         <MessageStatus msg={msg} isMine={isMine} />
@@ -370,11 +412,15 @@ export default function RFQChat({
                           <button
                             onClick={() => toggleLikeMutation.mutate(msg.id)}
                             className={`p-1.5 rounded-full hover:bg-slate-200 transition-colors ${
-                              msg.isLiked ? "text-rose-500" : "text-slate-400 hover:text-rose-500"
+                              msg.isLiked
+                                ? "text-rose-500"
+                                : "text-slate-400 hover:text-rose-500"
                             }`}
                             title={msg.isLiked ? "Unlike" : "Like"}
                           >
-                            <Heart className={`w-3.5 h-3.5 ${msg.isLiked ? "fill-rose-500" : ""}`} />
+                            <Heart
+                              className={`w-3.5 h-3.5 ${msg.isLiked ? "fill-rose-500" : ""}`}
+                            />
                           </button>
                         )}
 
@@ -384,7 +430,9 @@ export default function RFQChat({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveMenuId(activeMenuId === msg.id ? null : msg.id);
+                                setActiveMenuId(
+                                  activeMenuId === msg.id ? null : msg.id,
+                                );
                               }}
                               className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
                             >
@@ -421,7 +469,6 @@ export default function RFQChat({
                         )}
                       </div>
                     )}
-
                   </div>
                 </div>
               </div>
@@ -453,12 +500,18 @@ export default function RFQChat({
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder={editingMessageId ? "Edit your message..." : "Type a message…"}
+            placeholder={
+              editingMessageId ? "Edit your message..." : "Type a message…"
+            }
             className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all shadow-inner"
           />
           <button
             onClick={handleSend}
-            disabled={!messageText.trim() || sendMessageMutation.isPending || editMessageMutation.isPending}
+            disabled={
+              !messageText.trim() ||
+              sendMessageMutation.isPending ||
+              editMessageMutation.isPending
+            }
             className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center hover:opacity-95 disabled:opacity-50 transition-all shadow-md active:scale-95"
           >
             <Send className="w-4 h-4" />

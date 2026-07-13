@@ -18,7 +18,7 @@ export const io = new Server(httpServer, {
 });
 
 // Attach io to app so controllers can emit events via req.app.get('io')
-app.set('io', io);
+app.set("io", io);
 
 // Socket.io connection handling
 io.on("connection", (socket) => {
@@ -44,16 +44,16 @@ io.on("connection", (socket) => {
 });
 
 // Ensure DB schema is up‑to‑date
-try {
-  if (process.env.NODE_ENV !== "production") {
-    console.log("⏳ Applying Prisma schema to the database...");
-    execSync("npx prisma db push --schema prisma/schema.prisma", {
-      stdio: "inherit",
-    });
-  }
-} catch (err) {
-  console.error("⚠️ Prisma db push failed:", err);
-}
+// try {
+//   if (process.env.NODE_ENV !== "production") {
+//     console.log("⏳ Applying Prisma schema to the database...");
+//     execSync("npx prisma db push --schema prisma/schema.prisma", {
+//       stdio: "inherit",
+//     });
+//   }
+// } catch (err) {
+//   console.error("⚠️ Prisma db push failed:", err);
+// }
 
 // Test DB connection
 async function testDB() {
@@ -69,16 +69,18 @@ testDB();
 
 let port = Number(process.env.PORT) || 5000;
 const startServer = () => {
-  httpServer.listen(port, () => {
-    console.log(`Server running on ${port}`);
-  }).on('error', (err: any) => {
-    if (err.code === 'EADDRINUSE') {
-      console.warn(`Port ${port} already in use, trying ${port + 1}`);
-      port += 1;
-      startServer();
-    } else {
-      console.error('Server error:', err);
-    }
-  });
+  httpServer
+    .listen(port, () => {
+      console.log(`Server running on ${port}`);
+    })
+    .on("error", (err: any) => {
+      if (err.code === "EADDRINUSE") {
+        console.warn(`Port ${port} already in use, trying ${port + 1}`);
+        port += 1;
+        startServer();
+      } else {
+        console.error("Server error:", err);
+      }
+    });
 };
 startServer();

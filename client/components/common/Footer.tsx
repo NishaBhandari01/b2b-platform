@@ -1,147 +1,101 @@
-"use client";
+// "use client";
 
+import { Globe2, Plug, Users, Wrench } from "lucide-react";
 import Link from "next/link";
-import { Mail, Phone, MapPin, Heart, Zap, Globe } from "lucide-react";
 
 export function Footer() {
+  const FOOTER_COLUMNS: { title: string; links: string[] }[] = [
+    {
+      title: "Products",
+      links: [
+        "Browse Categories",
+        "Featured Products",
+        "Latest Listings",
+        "Compare Products",
+      ],
+    },
+    {
+      title: "Suppliers",
+      links: [
+        "Become a Supplier",
+        "Gold Supplier Program",
+        "Verification Process",
+        "Supplier Dashboard",
+      ],
+    },
+    {
+      title: "RFQs",
+      links: ["Post an RFQ", "My RFQs", "Quotation Manager", "Trade Assurance"],
+    },
+    {
+      title: "Resources",
+      links: [
+        "Industry News",
+        "Sourcing Guides",
+        "Market Reports",
+        "API Documentation",
+      ],
+    },
+    {
+      title: "Support",
+      links: ["Help Center", "Contact Us", "Live Chat", "Report an Issue"],
+    },
+    {
+      title: "Legal",
+      links: [
+        "Terms of Service",
+        "Privacy Policy",
+        "Trade Policy",
+        "Cookie Settings",
+      ],
+    },
+  ];
   return (
-    <footer className="bg-background border-t border-border mt-16">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          {/* Company Info */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-sm">
-                B2B
-              </div>
-              <span className="font-bold">B2B Marketplace</span>
+    <footer className="border-t border-slate-200 bg-white pt-16">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 gap-8 pb-12 sm:grid-cols-3 lg:grid-cols-6">
+          {FOOTER_COLUMNS.map((col) => (
+            <div key={col.title}>
+              <h4 className="text-[13px] font-semibold text-slate-900">
+                {col.title}
+              </h4>
+              <ul className="mt-3 space-y-2">
+                {col.links.map((link) => (
+                  <li key={link}>
+                    <Link
+                      href="#"
+                      className="text-[13px] text-slate-500 transition-colors hover:text-emerald-700"
+                    >
+                      {link}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Connecting suppliers and buyers globally with a trusted B2B
-              marketplace platform.
-            </p>
-            <div className="flex gap-4">
-              <Link href="#" className="hover:text-primary transition-colors">
-                <Globe className="w-5 h-5" />
-              </Link>
-              <Link href="#" className="hover:text-primary transition-colors">
-                <Zap className="w-5 h-5" />
-              </Link>
-              <Link href="#" className="hover:text-primary transition-colors">
-                <Heart className="w-5 h-5" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Product Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Product</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link
-                  href="/products"
-                  className="hover:text-primary transition-colors"
-                >
-                  Browse Products
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/suppliers"
-                  className="hover:text-primary transition-colors"
-                >
-                  Find Suppliers
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/categories"
-                  className="hover:text-primary transition-colors"
-                >
-                  Categories
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-primary transition-colors">
-                  Pricing
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Company</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="#" className="hover:text-primary transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-primary transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-primary transition-colors">
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-primary transition-colors">
-                  Press
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h4 className="font-semibold mb-4">Support</h4>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <a
-                  href="mailto:support@b2bmarketplace.com"
-                  className="hover:text-primary transition-colors"
-                >
-                  support@b2bmp.com
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <a
-                  href="tel:+1234567890"
-                  className="hover:text-primary transition-colors"
-                >
-                  +1 (234) 567-890
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                <span>123 Business St, Tech City</span>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-border mb-6"></div>
-
-        {/* Bottom Footer */}
-        <div className="flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>&copy; 2026 B2B Marketplace. All rights reserved.</p>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <Link href="#" className="hover:text-primary transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="#" className="hover:text-primary transition-colors">
-              Terms of Service
-            </Link>
-            <Link href="#" className="hover:text-primary transition-colors">
-              Cookie Policy
-            </Link>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 py-6 sm:flex-row">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600" />
+            <span className="text-sm font-semibold text-slate-800">
+              TradeHub
+            </span>
+          </div>
+          <p className="text-[12px] text-slate-400">
+            © {new Date().getFullYear()} TradeHub Marketplace. All rights
+            reserved.
+          </p>
+          <div className="flex items-center gap-3">
+            {[Wrench, Plug, Globe2, Users].map((Icon, i) => (
+              <a
+                key={i}
+                href="#"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </a>
+            ))}
           </div>
         </div>
       </div>
