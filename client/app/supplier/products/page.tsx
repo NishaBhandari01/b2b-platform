@@ -38,6 +38,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { useRouter } from "next/navigation";
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -383,7 +385,6 @@ function MetricPill({
     </div>
   );
 }
-
 /* ------------------------------------------------------------------ */
 /*  Product Card                                                        */
 /* ------------------------------------------------------------------ */
@@ -838,7 +839,7 @@ export default function SupplierProductsPage() {
   const [sort, setSort] = useState(SORT_OPTIONS[0]);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
-
+  const router = useRouter();
   const filtered = useMemo(() => {
     let list = PRODUCTS.filter((p) => {
       const matchesSearch =
@@ -894,7 +895,10 @@ export default function SupplierProductsPage() {
               around the world.
             </p>
           </div>
-          <Button className="h-10 gap-1.5 bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 hover:bg-emerald-700">
+          <Button
+            onClick={() => router.push("/supplier/products/add")}
+            className="h-10 gap-1.5 bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 hover:bg-emerald-700"
+          >
             <Plus className="h-4 w-4" />
             Add Product
           </Button>

@@ -53,14 +53,24 @@ export default function SupplierMessages() {
   const { data: conversations = [] } = useQuery<ConversationItem[]>({
     queryKey: ["conversations"],
     queryFn: async () => {
+      console.log("🔥 GET /conversations");
+
       const res = await fetch(`${API_URL}/api/conversations`, {
         credentials: "include",
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to load");
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load");
+      }
+
       return data.data;
     },
-    refetchInterval: 5000,
+
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);

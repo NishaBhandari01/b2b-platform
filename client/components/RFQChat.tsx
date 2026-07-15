@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/lib/hooks/useToast";
 import socketIO from "socket.io-client";
+import { useMemo } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -89,7 +90,10 @@ export default function RFQChat({
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<any>(null);
-  const queryKey = ["messages", conversationId];
+  const queryKey = useMemo(
+    () => ["messages", conversationId],
+    [conversationId],
+  );
 
   // Close message action menus on outside click
   useEffect(() => {
@@ -141,16 +145,24 @@ export default function RFQChat({
     const socket = socketIO(API_URL, { withCredentials: true } as any);
     socket.on("connect", () => {
       console.log("🟢 Socket Connected:", socket.id);
+      console.log("Socket ID:", socket.id);
     });
 
-    socket.on("disconnect", () => {
-      console.log("🔴 Socket Disconnected");
+    socket.on("disconnect", (reason) => {
+      console.log("🔴 DISCONNECTED");
+      console.log("Reason:", reason);
+    });
+    socket.on("connect_error", (err) => {
+      console.log("❌ CONNECT ERROR");
+      console.log(err);
     });
     socketRef.current = socket as any;
 
     socket.emit("joinConversation", conversationId);
+    console.log("📨 Joining room:", conversationId);
 
     socket.on("message:new", (msg: Message) => {
+      console.log("📩 message:new", msg);
       queryClient.setQueryData<Message[]>(queryKey, (prev = []) => {
         if (prev.find((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
@@ -165,6 +177,7 @@ export default function RFQChat({
     });
 
     socket.on("message:delivered", (msg: Message) => {
+      console.log("✅ message:delivered", msg.id);
       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
         prev.map((m) =>
           m.id === msg.id ? { ...m, deliveredAt: msg.deliveredAt } : m,
@@ -173,12 +186,14 @@ export default function RFQChat({
     });
 
     socket.on("message:read", (msg: Message) => {
+      console.log("👀 message:read", msg.id);
       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
         prev.map((m) => (m.id === msg.id ? { ...m, readAt: msg.readAt } : m)),
       );
     });
 
     socket.on("message:updated", (msg: Message) => {
+      console.log("✏️ message:updated", msg.id);
       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
         prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)),
       );
