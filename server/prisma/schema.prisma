@@ -8,22 +8,24 @@ datasource db {
 }
 
 model User {
-  id          String      @id @default(cuid())
-  name        String
-  email       String      @unique
-  password    String
-  role        UserRole    @default(buyer)
+  id       String   @id @default(cuid())
+  name     String
+  email    String   @unique
+  password String
+  role     UserRole @default(buyer)
 
   // password Reset Fields
-  resetPasswordToken String?
+  resetPasswordToken   String?
   resetPasswordExpires DateTime?
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  rfqs            Rfq[]
-  quotations      Quotation[]
-  sentMessages    Message[] @relation("sentMessages")
-  receivedMessages Message[] @relation("receivedMessages")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  rfqs             Rfq[]
+  quotations       Quotation[]
+  sentMessages     Message[]   @relation("sentMessages")
+  receivedMessages Message[]   @relation("receivedMessages")
+
+  products Product[] @relation("SupplierProducts")
 }
 
 enum UserRole {
@@ -62,52 +64,187 @@ model Rfq {
 }
 
 model Quotation {
-  id          String          @id @default(cuid())
-  rfqId       String
-  rfq         Rfq             @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  supplierId  String
-  supplier    User            @relation(fields: [supplierId], references: [id])
-  price       Float
-  leadTime    String
-  message     String
-  status      QuotationStatus @default(pending)
+  id         String          @id @default(cuid())
+  rfqId      String
+  rfq        Rfq             @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplierId String
+  supplier   User            @relation(fields: [supplierId], references: [id])
+  price      Float
+  leadTime   String
+  message    String
+  status     QuotationStatus @default(pending)
 
   conversation Conversation? @relation("QuotationConversation")
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Conversation {
-  id          String      @id @default(cuid())
-  quotationId String @unique
-  quotation   Quotation   @relation("QuotationConversation", fields: [quotationId], references: [id])
-  messages    Message[]   @relation("ConversationMessages")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id          String    @id @default(cuid())
+  quotationId String    @unique
+  quotation   Quotation @relation("QuotationConversation", fields: [quotationId], references: [id])
+  messages    Message[] @relation("ConversationMessages")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Message {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   rfqId          String
-  rfq            Rfq       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  rfq            Rfq           @relation(fields: [rfqId], references: [id], onDelete: Cascade)
   conversationId String?
   conversation   Conversation? @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String?
-  sender         User?     @relation("sentMessages", fields: [senderId], references: [id])
-  senderRole     String?   // "buyer" | "supplier"
+  sender         User?         @relation("sentMessages", fields: [senderId], references: [id])
+  senderRole     String? // "buyer" | "supplier"
   receiverId     String?
-  receiver       User?     @relation("receivedMessages", fields: [receiverId], references: [id])
+  receiver       User?         @relation("receivedMessages", fields: [receiverId], references: [id])
   text           String
-  system         Boolean   @default(false)
-  isLiked        Boolean   @default(false)
-  isEdited       Boolean   @default(false)
-  isDeleted      Boolean   @default(false)
+  system         Boolean       @default(false)
+  isLiked        Boolean       @default(false)
+  isEdited       Boolean       @default(false)
+  isDeleted      Boolean       @default(false)
   deliveredAt    DateTime?
   readAt         DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
+enum ProductStatus {
+  draft
+  active
+  out_of_stock
+  archived
+}
 
+enum PriceType {
+  fixed
+  range
+  rfq
+}
 
+enum ProductDocumentType {
+  brochure
+  datasheet
+  catalog
+  manual
+  safety_sheet
+  certification
+}
 
+model Product {
+  id String @id @default(cuid())
+
+  supplierId String
+
+  supplier User @relation("SupplierProducts", fields: [supplierId], references: [id], onDelete: Cascade)
+
+  // Basic Information
+  name String
+  slug String @unique
+
+  category    String
+  subCategory String?
+
+  brand       String?
+  modelNumber String?
+  sku         String?
+
+  status ProductStatus @default(draft)
+
+  // Media
+  videoUrl String?
+
+  // Description
+  shortDescription String?
+  description      String
+
+  keyFeatures  Json?
+  applications Json?
+  benefits     Json?
+
+  // Pricing
+  priceType PriceType @default(fixed)
+
+  currency String @default("USD")
+
+  price    Decimal? @db.Decimal(12, 2)
+  minPrice Decimal? @db.Decimal(12, 2)
+  maxPrice Decimal? @db.Decimal(12, 2)
+
+  unit String @default("Piece")
+
+  minOrderQty Int?
+  moqUnit     String?
+
+  availableQuantity Int?
+  stockUnit         String?
+
+  // Dynamic Sections
+  specifications Json?
+
+  shippingInfo Json?
+
+  certifications Json?
+
+  // SEO
+  tags     String[]
+  keywords String[]
+
+  seoTitle       String?
+  seoDescription String?
+
+  // Analytics
+  views Int @default(0)
+
+  // Dates
+  publishedAt DateTime?
+  deletedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  images    ProductImage[]
+  documents ProductDocument[]
+
+  @@index([supplierId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ProductImage {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url      String
+  publicId String
+
+  isPrimary Boolean @default(false)
+
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+model ProductDocument {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type ProductDocumentType
+
+  fileName String
+  fileUrl  String
+  publicId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}

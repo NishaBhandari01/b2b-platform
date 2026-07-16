@@ -20,11 +20,13 @@ export const authenticate = (
   const tokenFromCookie = req.cookies?.accessToken;
   const token = tokenFromHeader || tokenFromCookie;
 
-  console.log(`[Auth] Checking route ${req.method} ${req.originalUrl}`);
-  console.log(`[Auth] Header token: ${!!tokenFromHeader}, Cookie token: ${!!tokenFromCookie}`);
+  // console.log(`[Auth] Checking route ${req.method} ${req.originalUrl}`);
+  // console.log(
+  //   `[Auth] Header token: ${!!tokenFromHeader}, Cookie token: ${!!tokenFromCookie}`,
+  // );
 
   if (!token) {
-    console.log(`[Auth] Unauthorized: No token found`);
+    // console.log(`[Auth] Unauthorized: No token found`);
     return res.status(401).json({
       success: false,
       message: "Unauthorized",
@@ -39,6 +41,8 @@ export const authenticate = (
       id: string;
       role: string;
     };
+
+    // console.log("[Auth] Decoded token:", decoded);
 
     req.user = decoded;
 
