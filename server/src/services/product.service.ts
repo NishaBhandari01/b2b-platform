@@ -9,7 +9,7 @@ const authRepository = new AuthRepository();
 export class ProductService {
   async createProduct(
     supplierId: string,
-    productData: Prisma.ProductCreateInput,
+    productData: any,
   ) {
     // Check supplier exists
     const supplier = await authRepository.findUserById(supplierId);
@@ -37,15 +37,41 @@ export class ProductService {
       slug = `${slug}-${Date.now()}`;
     }
 
+    const { images, documents, ...rest } = productData;
+
+    const formattedImages = images && Array.isArray(images)
+      ? {
+          create: images.map((img: any) => ({
+            url: img.url,
+            publicId: img.publicId,
+            isPrimary: img.isPrimary ?? false,
+            displayOrder: img.displayOrder ?? 0,
+          })),
+        }
+      : undefined;
+
+    const formattedDocuments = documents && Array.isArray(documents)
+      ? {
+          create: documents.map((doc: any) => ({
+            type: doc.type,
+            fileName: doc.fileName,
+            fileUrl: doc.fileUrl,
+            publicId: doc.publicId || "",
+          })),
+        }
+      : undefined;
+
     // Create Product
     return await productRepository.createProduct({
-      ...productData,
+      ...rest,
       slug,
       supplier: {
         connect: {
           id: supplierId,
         },
       },
+      images: formattedImages,
+      documents: formattedDocuments,
     });
   }
 
@@ -82,7 +108,7 @@ export class ProductService {
   async updateProduct(
     productId: string,
     supplierId: string,
-    productData: Prisma.ProductUpdateInput,
+    productData: any,
   ) {
     const product = await productRepository.findSupplierProduct(
       productId,
@@ -93,7 +119,39 @@ export class ProductService {
       throw new Error("Product not found or unauthorized.");
     }
 
-    return await productRepository.updateProduct(productId, productData);
+    const { images, documents, ...rest } = productData;
+
+    let imagesUpdate: any = undefined;
+    if (images && Array.isArray(images)) {
+      imagesUpdate = {
+        deleteMany: {},
+        create: images.map((img: any) => ({
+          url: img.url,
+          publicId: img.publicId,
+          isPrimary: img.isPrimary ?? false,
+          displayOrder: img.displayOrder ?? 0,
+        })),
+      };
+    }
+
+    let documentsUpdate: any = undefined;
+    if (documents && Array.isArray(documents)) {
+      documentsUpdate = {
+        deleteMany: {},
+        create: documents.map((doc: any) => ({
+          type: doc.type,
+          fileName: doc.fileName,
+          fileUrl: doc.fileUrl,
+          publicId: doc.publicId || "",
+        })),
+      };
+    }
+
+    return await productRepository.updateProduct(productId, {
+      ...rest,
+      images: imagesUpdate,
+      documents: documentsUpdate,
+    });
   }
 
   async deleteProduct(productId: string, supplierId: string) {

@@ -34,12 +34,19 @@ enum UserRole {
   admin
 }
 
+// enum RFQStatus {
+//   draft
+//   published
+//   closed
+// }
+
+
 enum RFQStatus {
   draft
   published
+  expired
   closed
 }
-
 enum QuotationStatus {
   pending
   accepted

@@ -1,5 +1,7 @@
 import { RFQRepository } from "../repository/rfq.repository.js";
-
+import { sendEmail } from "../utils/mail.js";
+import { quotationReceivedTemplate } from "../templates/quotationReceived.js";
+import prisma from "../config/db.js";
 export class RFQService {
   private rfqRepository: RFQRepository;
 
@@ -98,6 +100,33 @@ export class RFQService {
     return await this.rfqRepository.createMessage(payload);
   }
 
+  // async createQuotation(payload: {
+  //   rfqId: string;
+  //   supplierId: string;
+  //   price: number;
+  //   leadTime: string;
+  //   message: string;
+  // }) {
+  //   const rfq = await this.rfqRepository.getRFQById(payload.rfqId);
+  //   if (!rfq) {
+  //     throw new Error("RFQ not found");
+  //   }
+  //   if (rfq.status !== "published") {
+  //     throw new Error("Cannot submit a quotation for a closed RFQ");
+  //   }
+  //   const alreadyQuoted = await this.rfqRepository.hasSupplierQuotation(
+  //     payload.rfqId,
+  //     payload.supplierId,
+  //   );
+  //   // if (alreadyQuoted) {
+  //   //   throw new Error(
+  //   //     "A quotation has already been submitted by this supplier",
+  //   //   );
+  //   // }
+
+  //   return await this.rfqRepository.createQuotation(payload);
+  // }
+
   async createQuotation(payload: {
     rfqId: string;
     supplierId: string;
@@ -105,26 +134,77 @@ export class RFQService {
     leadTime: string;
     message: string;
   }) {
+    console.log("🚀 RFQService.createQuotation() called");
+
     const rfq = await this.rfqRepository.getRFQById(payload.rfqId);
+
     if (!rfq) {
       throw new Error("RFQ not found");
     }
+
     if (rfq.status !== "published") {
       throw new Error("Cannot submit a quotation for a closed RFQ");
     }
+
     const alreadyQuoted = await this.rfqRepository.hasSupplierQuotation(
       payload.rfqId,
       payload.supplierId,
     );
-    if (alreadyQuoted) {
-      throw new Error(
-        "A quotation has already been submitted by this supplier",
-      );
+
+    // Uncomment if you want to prevent duplicate quotations
+    // if (alreadyQuoted) {
+    //   throw new Error("A quotation has already been submitted by this supplier");
+    // }
+
+    const quotation = await this.rfqRepository.createQuotation(payload);
+
+    console.log("✅ Quotation saved");
+
+    // Get buyer and supplier
+    const buyer = await prisma.user.findUnique({
+      where: {
+        id: rfq.userId,
+      },
+    });
+
+    console.log("Buyer:", buyer);
+
+    const supplier = await prisma.user.findUnique({
+      where: {
+        id: payload.supplierId,
+      },
+    });
+
+    console.log("Supplier:", supplier);
+
+    if (buyer && supplier) {
+      try {
+        console.log("📧 Sending quotation email...");
+
+        await sendEmail(
+          buyer.email,
+          "📨 New Quotation Received",
+          quotationReceivedTemplate({
+            buyerName: buyer.name,
+            supplierName: supplier.name,
+            rfqTitle: rfq.title,
+            price: payload.price,
+            leadTime: payload.leadTime,
+            message: payload.message,
+            // quotationUrl: `${process.env.FRONTEND_URL}/buyer/dashboard`,
+            quotationUrl: `${process.env.FRONTEND_URL}/buyer/rfqs`,
+          }),
+        );
+
+        console.log("✅ Buyer email sent");
+      } catch (error) {
+        console.error("❌ Email failed");
+        console.error(error);
+      }
     }
 
-    return await this.rfqRepository.createQuotation(payload);
+    return quotation;
   }
-
   async updateQuotationStatus(
     quotationId: string,
     buyerId: string,

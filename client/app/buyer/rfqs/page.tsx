@@ -6,7 +6,20 @@ import { Card } from "@/components/ui/card";
 import RFQChat from "@/components/RFQChat";
 import { Badge } from "@/components/shared/Badge";
 import { useToast } from "@/lib/hooks/useToast";
-import { Plus, Eye, Edit2, Trash2, Send, X } from "lucide-react";
+import {
+  Plus,
+  Eye,
+  Edit2,
+  Trash2,
+  Send,
+  X,
+  FileText,
+  Clock,
+  Package,
+  DollarSign,
+  MessageSquare,
+  Inbox,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +62,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   return data as T;
 }
+
+// Shared input styling so every field in both forms looks identical
+const fieldClass =
+  "w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10";
+const labelClass = "mb-1.5 block text-xs font-semibold text-slate-700";
 
 export default function BuyerRFQs() {
   const { success, error } = useToast();
@@ -279,6 +297,44 @@ export default function BuyerRFQs() {
     }
   };
 
+  // ---- Derived stats for the summary row ----
+  const totalRFQs = rfqs.length;
+  const totalQuotations = rfqs.reduce(
+    (sum, rfq) => sum + (rfq._count?.quotations ?? 0),
+    0,
+  );
+  const rfqsAwaitingResponse = rfqs.filter(
+    (rfq) => (rfq._count?.quotations ?? 0) === 0,
+  ).length;
+  const totalBudget = rfqs.reduce((sum, rfq) => sum + (rfq.budget || 0), 0);
+
+  const statCards = [
+    {
+      label: "Open RFQs",
+      value: totalRFQs,
+      icon: FileText,
+      tint: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Quotations received",
+      value: totalQuotations,
+      icon: MessageSquare,
+      tint: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Awaiting response",
+      value: rfqsAwaitingResponse,
+      icon: Clock,
+      tint: "bg-amber-50 text-amber-600",
+    },
+    {
+      label: "Combined budget",
+      value: `$${totalBudget.toLocaleString()}`,
+      icon: DollarSign,
+      tint: "bg-slate-100 text-slate-700",
+    },
+  ];
+
   // Delete Confirmation Dialog
   const deleteDialog = (
     <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
@@ -286,500 +342,515 @@ export default function BuyerRFQs() {
         <DialogHeader>
           <DialogTitle>Delete RFQ</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this RFQ? This action cannot be
-            undone.
+            This will permanently remove the RFQ and any quotations linked to
+            it. This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex justify-end space-x-2">
+        <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={closeDeleteModal}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={confirmDelete}>
-            Delete
+          <Button
+            className="bg-rose-600 text-white hover:bg-rose-700"
+            onClick={confirmDelete}
+          >
+            Delete RFQ
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 
+  // Shared form body used by both the create and edit dialogs
+  const renderRFQFields = () => (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label className={labelClass}>What do you need?</label>
+        <input
+          value={form.title}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, title: event.target.value }))
+          }
+          className={fieldClass}
+          placeholder="e.g. Industrial pumps for production line"
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Category</label>
+        <input
+          value={form.category}
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              category: event.target.value,
+            }))
+          }
+          className={fieldClass}
+          placeholder="e.g. Machinery"
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Quantity</label>
+        <input
+          type="number"
+          min={1}
+          value={form.quantity}
+          onKeyDown={(e) => {
+            if (e.key === "-") e.preventDefault();
+          }}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value === "" || Number(value) >= 1) {
+              setForm((current) => ({ ...current, quantity: value }));
+            }
+          }}
+          className={fieldClass}
+          placeholder="50 units"
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Budget (USD)</label>
+        <input
+          type="number"
+          min={1}
+          value={form.budget}
+          onKeyDown={(e) => {
+            if (e.key === "-") e.preventDefault();
+          }}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, budget: event.target.value }))
+          }
+          className={fieldClass}
+          placeholder="25,000"
+        />
+      </div>
+      <div>
+        <label className={labelClass}>Deadline</label>
+        <input
+          type="date"
+          min={new Date().toISOString().split("T")[0]}
+          value={form.deadline}
+          onChange={(event) => {
+            const selectedDate = event.target.value;
+            const today = new Date().toISOString().split("T")[0];
+            if (selectedDate >= today) {
+              setForm((current) => ({ ...current, deadline: selectedDate }));
+            }
+          }}
+          className={fieldClass}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <label className={labelClass}>What should suppliers know?</label>
+        <textarea
+          value={form.notes}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, notes: event.target.value }))
+          }
+          className={`${fieldClass} min-h-24 resize-none`}
+          placeholder="Include quality standards, delivery expectations, and any required certifications."
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {deleteDialog}
 
-      <div className="flex items-center justify-between">
+      {/* Page header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Requests for Quotation
           </h1>
-          <p className="text-slate-600 mt-1">Manage and track your RFQs</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Post sourcing requests and manage supplier responses in one place.
+          </p>
         </div>
         <button
           onClick={handleCreateRFQ}
-          className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition-colors hover:bg-emerald-700"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="h-4 w-4" />
           Create RFQ
         </button>
       </div>
 
+      {/* Stat summary row */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {statCards.map(({ label, value, icon: Icon, tint }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-slate-200 bg-white p-4"
+          >
+            <div
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${tint}`}
+            >
+              <Icon className="h-4.5 w-4.5" />
+            </div>
+            <p className="mt-3 text-xl font-bold tracking-tight text-slate-900">
+              {value}
+            </p>
+            <p className="text-xs font-medium text-slate-500">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Selected RFQ detail panel */}
       {selectedRFQ ? (
-        <Card className="p-6 space-y-4 border border-slate-200">
-          <div className="flex items-center justify-between">
+        <Card className="overflow-hidden border border-slate-200 p-0">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-6 py-4">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                RFQ Details
-              </h2>
-              <p className="text-sm text-slate-600">
-                {selectedRFQ.title} • {selectedRFQ.category}
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                RFQ Detail
               </p>
+              <h2 className="mt-0.5 text-lg font-semibold text-slate-900">
+                {selectedRFQ.title}
+              </h2>
+              <p className="text-sm text-slate-500">{selectedRFQ.category}</p>
             </div>
             <button
               onClick={() => setSelectedRFQId(null)}
-              className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+              className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="text-sm text-slate-500">Budget</p>
-              <p className="font-semibold text-slate-900">
-                ${selectedRFQ.budget}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Quantity</p>
-              <p className="font-semibold text-slate-900">
-                {selectedRFQ.quantity}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Deadline</p>
-              <p className="font-semibold text-slate-900">
-                {new Date(selectedRFQ.deadline).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm text-slate-500">Description</p>
-            <p className="mt-2 text-slate-800">{selectedRFQ.description}</p>
-          </div>
-
-          {selectedRFQ.quotations && selectedRFQ.quotations.length > 0 ? (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700 mb-2">
-                  Message a supplier
+          <div className="space-y-6 px-6 py-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <DollarSign className="h-3.5 w-3.5" /> Budget
+                </div>
+                <p className="mt-1.5 text-lg font-bold text-slate-900">
+                  ${selectedRFQ.budget.toLocaleString()}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedRFQ.quotations.map((quotation) => (
-                    <button
-                      key={quotation.supplier.id}
-                      onClick={() =>
-                        setSelectedSupplierId(quotation.supplier.id)
-                      }
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                        selectedSupplierId === quotation.supplier.id
-                          ? "bg-purple-600 text-white border-purple-600"
-                          : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
-                      }`}
-                    >
-                      {quotation.supplier.name}
-                    </button>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Package className="h-3.5 w-3.5" /> Quantity
+                </div>
+                <p className="mt-1.5 text-lg font-bold text-slate-900">
+                  {selectedRFQ.quantity}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Clock className="h-3.5 w-3.5" /> Deadline
+                </div>
+                <p className="mt-1.5 text-lg font-bold text-slate-900">
+                  {new Date(selectedRFQ.deadline).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Description
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {selectedRFQ.description}
+              </p>
+            </div>
+
+            {/* Supplier quotations */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Supplier Quotations
+              </h3>
+
+              {isLoadingSelectedRFQ ? (
+                <div className="space-y-2">
+                  {[0, 1].map((i) => (
+                    <div
+                      key={i}
+                      className="h-20 animate-pulse rounded-lg bg-slate-100"
+                    />
                   ))}
                 </div>
-              </div>
-              {(() => {
-                const selectedQuotation = selectedRFQ.quotations.find(
-                  (q) => q.supplier.id === selectedSupplierId,
-                );
+              ) : !selectedRFQ.quotations ||
+                selectedRFQ.quotations.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-10 text-center">
+                  <Inbox className="h-6 w-6 text-slate-300" />
+                  <p className="text-sm text-slate-500">
+                    No quotations yet. You'll be able to message suppliers here
+                    once they respond.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {selectedRFQ.quotations.map((quotation) => (
+                    <div
+                      key={quotation.id}
+                      className="rounded-xl border border-slate-200 p-4 transition-colors hover:border-slate-300"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-700">
+                            {quotation.supplier.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {quotation.supplier.name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {quotation.supplier.email}
+                            </p>
+                          </div>
+                        </div>
 
-                return (
-                  <RFQChat
-                    conversationId={selectedQuotation?.conversation?.id || ""}
-                    currentUserId={selectedRFQ.userId}
-                    currentUserRole="buyer"
-                    rfqId={selectedRFQ.id}
-                    supplierId={selectedSupplierId ?? ""}
-                    otherPartyName={
-                      selectedQuotation?.supplier.name || "Supplier"
-                    }
-                  />
-                );
-              })()}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-slate-500">
-              Once a supplier submits a quotation, you'll be able to message
-              them here.
-            </div>
-          )}
+                        <div className="flex items-center gap-6 sm:text-right">
+                          <div>
+                            <p className="text-xs text-slate-500">Price</p>
+                            <p className="text-sm font-bold text-emerald-700">
+                              ${quotation.price.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Lead time</p>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {quotation.leadTime}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              quotation.status === "accepted"
+                                ? "success"
+                                : quotation.status === "rejected"
+                                  ? "danger"
+                                  : "default"
+                            }
+                          >
+                            {quotation.status}
+                          </Badge>
+                        </div>
+                      </div>
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-900">
-              Supplier Quotations
-            </h3>
-            {isLoadingSelectedRFQ ? (
-              <div className="py-6 text-center text-slate-500">
-                Loading supplier responses...
-              </div>
-            ) : !selectedRFQ.quotations ||
-              selectedRFQ.quotations.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-slate-500">
-                No quotations have been submitted for this RFQ yet.
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {selectedRFQ.quotations.map((quotation) => (
-                  <Card key={quotation.id} className="p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm text-slate-500">Supplier</p>
-                        <p className="font-semibold text-slate-900">
-                          {quotation.supplier.name}
+                      {quotation.message ? (
+                        <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-600">
+                          {quotation.message}
                         </p>
-                        <p className="text-sm text-slate-500">
-                          {quotation.supplier.email}
-                        </p>
-                      </div>
-                      <div className="grid gap-2 sm:text-right">
-                        <span className="text-sm text-slate-500">Price</span>
-                        <p className="font-semibold text-slate-900">
-                          ${quotation.price}
-                        </p>
-                      </div>
-                      <div className="grid gap-2 sm:text-right">
-                        <span className="text-sm text-slate-500">
-                          Lead time
-                        </span>
-                        <p className="font-semibold text-slate-900">
-                          {quotation.leadTime}
-                        </p>
-                      </div>
+                      ) : null}
+
+                      <button
+                        onClick={() =>
+                          setSelectedSupplierId(quotation.supplier.id)
+                        }
+                        className={`mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          selectedSupplierId === quotation.supplier.id
+                            ? "bg-emerald-600 text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        {selectedSupplierId === quotation.supplier.id
+                          ? "Chat open"
+                          : "Message supplier"}
+                      </button>
+
+                      {selectedSupplierId === quotation.supplier.id ? (
+                        <div className="mt-4 border-t border-slate-100 pt-4">
+                          <RFQChat
+                            conversationId={quotation.conversation?.id || ""}
+                            currentUserId={selectedRFQ.userId}
+                            currentUserRole="buyer"
+                            rfqId={selectedRFQ.id}
+                            supplierId={quotation.supplier.id}
+                            otherPartyName={quotation.supplier.name}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-slate-600">
-                        {quotation.message}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge
-                          variant={
-                            quotation.status === "accepted"
-                              ? "success"
-                              : quotation.status === "rejected"
-                                ? "danger"
-                                : "secondary"
-                          }
-                        >
-                          {quotation.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       ) : null}
 
-      {showForm && !editingRFQId ? (
-        <Card className="p-6">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Create a new RFQ
-            </h2>
-            <p className="text-sm text-slate-600">
+      {/* Create RFQ modal */}
+      <Dialog open={showForm && !editingRFQId} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create a new RFQ</DialogTitle>
+            <DialogDescription>
               Share what you need and suppliers will respond with quotes.
-            </p>
-          </div>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                What do you need?
-              </label>
-              <input
-                value={form.title}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    title: event.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-0"
-                placeholder="e.g. Industrial pumps for production line"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Category
-              </label>
-              <input
-                value={form.category}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    category: event.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-0"
-                placeholder="Category"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Quantity
-              </label>
-
-              <input
-                type="number"
-                min={1}
-                value={form.quantity}
-                onKeyDown={(e) => {
-                  if (e.key === "-") {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={(event) => {
-                  const value = event.target.value;
-
-                  if (value === "" || Number(value) >= 1) {
-                    setForm((current) => ({
-                      ...current,
-                      quantity: value,
-                    }));
-                  }
-                }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-0"
-                placeholder="50 units"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Budget
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={form.budget}
-                onKeyDown={(e) => {
-                  if (e.key === "-") {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    budget: event.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-0"
-                placeholder="$25,000 - $35,000"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Deadline
-              </label>
-
-              <input
-                type="date"
-                min={new Date().toISOString().split("T")[0]}
-                value={form.deadline}
-                onChange={(event) => {
-                  const selectedDate = event.target.value;
-                  const today = new Date().toISOString().split("T")[0];
-
-                  if (selectedDate >= today) {
-                    setForm((current) => ({
-                      ...current,
-                      deadline: selectedDate,
-                    }));
-                  }
-                }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-0"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                What should suppliers know?
-              </label>
-              <textarea
-                value={form.notes}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    notes: event.target.value,
-                  }))
-                }
-                className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-0"
-                placeholder="Include quality standards, delivery expectations, and any required certifications."
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end gap-3">
-              <button
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            {renderRFQFields()}
+            <DialogFooter className="mt-6 flex justify-end gap-2">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowForm(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                disabled={createMutation.isPending}
+                className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 <Send className="h-4 w-4" />
-                Post RFQ
-              </button>
-            </div>
+                {createMutation.isPending ? "Posting..." : "Post RFQ"}
+              </Button>
+            </DialogFooter>
           </form>
-        </Card>
-      ) : null}
+        </DialogContent>
+      </Dialog>
 
-      {editingRFQId && (
-        <Card className="p-6">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Edit RFQ</h2>
-            <p className="text-sm text-slate-600">
+      {/* Edit RFQ modal */}
+      <Dialog
+        open={Boolean(editingRFQId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingRFQId(null);
+            setForm(initialForm);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit RFQ</DialogTitle>
+            <DialogDescription>
               Update the details of your RFQ.
-            </p>
-          </div>
-          <form
-            className="grid gap-4 md:grid-cols-2"
-            onSubmit={handleEditSubmit}
-          >
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                What do you need?
-              </label>
-              <input
-                value={form.title}
-                onChange={(e) =>
-                  setForm((c) => ({ ...c, title: e.target.value }))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="e.g. Industrial pumps for production line"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end gap-3">
-              <button
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit}>
+            {renderRFQFields()}
+            <DialogFooter className="mt-6 flex justify-end gap-2">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => {
                   setEditingRFQId(null);
                   setForm(initialForm);
                 }}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                disabled={editRFQMutation.isPending}
+                className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <Send className="w-4 h-4" />
-                Save Changes
-              </button>
-            </div>
+                <Send className="h-4 w-4" />
+                {editRFQMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
           </form>
-        </Card>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      <div className="grid grid-cols-1 gap-4">
-        <Card className="p-0 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
-                  RFQ ID
+      {/* RFQ table */}
+      <Card className="overflow-hidden border border-slate-200 p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  RFQ
                 </th>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
-                  Title
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Category
                 </th>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Budget
                 </th>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Status
                 </th>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Responses
                 </th>
-                <th className="text-left py-4 px-4 font-semibold text-slate-900">
+                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-500">
-                    Loading RFQs...
-                  </td>
-                </tr>
+                [0, 1, 2].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={6} className="px-5 py-4">
+                      <div className="h-5 w-full animate-pulse rounded bg-slate-100" />
+                    </td>
+                  </tr>
+                ))
               ) : rfqs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-500">
-                    No RFQs yet. Create the first one.
+                  <td colSpan={6} className="px-5 py-16">
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50">
+                        <FileText className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-700">
+                        No RFQs yet
+                      </p>
+                      <p className="max-w-xs text-xs text-slate-500">
+                        Post your first request for quotation and suppliers will
+                        start sending offers.
+                      </p>
+                      <button
+                        onClick={handleCreateRFQ}
+                        className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Create RFQ
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 rfqs.map((rfq) => (
                   <tr
                     key={rfq.id}
-                    className="border-t hover:bg-slate-50 transition-colors"
+                    className="transition-colors hover:bg-slate-50/80"
                   >
-                    <td className="py-4 px-4">
-                      <span className="font-semibold text-slate-900">
-                        {rfq.id.slice(0, 8)}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <p className="text-slate-900">{rfq.title}</p>
-                    </td>
-                    <td className="py-4 px-4">
-                      <p className="text-slate-600">{rfq.category}</p>
-                    </td>
-                    <td className="py-4 px-4">
-                      <p className="text-slate-900 font-medium">
-                        ${rfq.budget}
+                    <td className="px-5 py-4">
+                      <p className="font-medium text-slate-900">{rfq.title}</p>
+                      <p className="text-xs text-slate-400">
+                        #{rfq.id.slice(0, 8)}
                       </p>
                     </td>
-                    <td className="py-4 px-4">
-                      <Badge variant={"success"}>Active</Badge>
+                    <td className="px-5 py-4 text-slate-600">{rfq.category}</td>
+                    <td className="px-5 py-4 font-medium text-slate-900">
+                      ${rfq.budget.toLocaleString()}
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                    <td className="px-5 py-4">
+                      <Badge variant="success">Active</Badge>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
                         {rfq._count?.quotations ?? 0}
                       </span>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex gap-2">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleViewRFQ(rfq.id)}
-                          className="p-2 hover:bg-slate-200 rounded transition-colors"
+                          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                           title="View"
                         >
-                          <Eye className="w-4 h-4 text-slate-600" />
+                          <Eye className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleEditRFQ(rfq)}
-                          className="p-2 hover:bg-slate-200 rounded transition-colors"
+                          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                           title="Edit"
                         >
-                          <Edit2 className="w-4 h-4 text-slate-600" />
+                          <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteRFQ(rfq.id)}
-                          className="p-2 hover:bg-red-100 rounded transition-colors"
+                          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
                           title="Delete"
                         >
-                          <Trash2 className="w-4 h-4 text-red-600" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -788,8 +859,8 @@ export default function BuyerRFQs() {
               )}
             </tbody>
           </table>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 }

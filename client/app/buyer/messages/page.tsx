@@ -62,6 +62,18 @@ export default function BuyerMessages() {
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 
+  const sortedConversations = [...conversations].sort((a, b) => {
+    const aTime = a.messages[0]
+      ? new Date(a.messages[0].createdAt).getTime()
+      : 0;
+
+    const bTime = b.messages[0]
+      ? new Date(b.messages[0].createdAt).getTime()
+      : 0;
+
+    return bTime - aTime;
+  });
+
   const totalUnread = conversations.reduce(
     (sum, c) => sum + (c.unreadCount || 0),
     0,
@@ -90,7 +102,7 @@ export default function BuyerMessages() {
             <h2 className="font-semibold text-slate-900">Conversations</h2>
           </div>
           <div className="flex-1 overflow-y-auto divide-y">
-            {conversations.length === 0 ? (
+            {sortedConversations.length === 0 ? (
               <div className="p-6 text-center text-slate-400 text-sm">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 No conversations yet.
@@ -98,7 +110,7 @@ export default function BuyerMessages() {
                 View an RFQ and message a supplier.
               </div>
             ) : (
-              conversations.map((conv) => {
+              sortedConversations.map((conv) => {
                 const lastMsg = conv.messages[0];
                 const isActive = selectedConvId === conv.id;
                 return (

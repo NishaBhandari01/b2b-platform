@@ -93,15 +93,77 @@ export class RFQRepository {
     });
   }
 
+  // async getUserRFQs(userId: string, role: string) {
+  //   if (role === "buyer") {
+  //     return await prisma.rfq.findMany({
+  //       where: {
+  //         userId,
+  //       },
+  //       orderBy: {
+  //         createdAt: "desc",
+  //       },
+  //       include: {
+  //         _count: {
+  //           select: {
+  //             quotations: true,
+  //           },
+  //         },
+  //       },
+  //     });
+  //   }
+
+  //   return await prisma.rfq.findMany({
+  //     where: {
+  //       status: "published",
+  //     },
+  //     orderBy: {
+  //       createdAt: "desc",
+  //     },
+  //     include: {
+  //       _count: {
+  //         select: {
+  //           quotations: true,
+  //         },
+  //       },
+  //     },
+  //   });
+  // }
+
+  // async getUserRFQs(userId: string, role: string) {
+  //   if (role === "buyer") {
+  //     return await prisma.rfq.findMany({
+  //       where: { userId },
+  //       orderBy: { createdAt: "desc" },
+  //       include: {
+  //         _count: { select: { quotations: true } },
+  //       },
+  //     });
+  //   }
+
+  //   const rfqs = await prisma.rfq.findMany({
+  //     where: { status: "published" },
+  //     orderBy: { createdAt: "desc" },
+  //     include: {
+  //       _count: { select: { quotations: true } },
+  //       quotations: {
+  //         where: { supplierId: userId },
+  //         select: { id: true },
+  //       },
+  //     },
+  //   });
+
+  //   // Flatten quotations[] into a boolean so the frontend doesn't see other suppliers' data
+  //   return rfqs.map(({ quotations, ...rfq }) => ({
+  //     ...rfq,
+  //     hasQuoted: quotations.length > 0,
+  //   }));
+  // }
+
   async getUserRFQs(userId: string, role: string) {
     if (role === "buyer") {
       return await prisma.rfq.findMany({
-        where: {
-          userId,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+        where: { userId },
+        orderBy: { createdAt: "desc" },
         include: {
           _count: {
             select: {
@@ -112,7 +174,20 @@ export class RFQRepository {
       });
     }
 
-    return await prisma.rfq.findMany({
+    // Automatically expire overdue RFQs
+    await prisma.rfq.updateMany({
+      where: {
+        status: "published",
+        deadline: {
+          lt: new Date(),
+        },
+      },
+      data: {
+        status: "expired",
+      },
+    });
+
+    const rfqs = await prisma.rfq.findMany({
       where: {
         status: "published",
       },
@@ -125,8 +200,21 @@ export class RFQRepository {
             quotations: true,
           },
         },
+        quotations: {
+          where: {
+            supplierId: userId,
+          },
+          select: {
+            id: true,
+          },
+        },
       },
     });
+
+    return rfqs.map((rfq: any) => ({
+      ...rfq,
+      hasQuoted: rfq.quotations.length > 0,
+    }));
   }
 
   async createQuotation(quotationData: {

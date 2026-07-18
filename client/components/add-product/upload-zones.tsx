@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { UploadCloud, X, FileText, Star, Loader2 } from "lucide-react";
 import type { UploadedImage, UploadedDocument } from "@/lib/schemas/product-schema";
+import { uploadFileApi } from "@/lib/api/product.api";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -64,16 +65,29 @@ export function ImageDropzone({
     onChange(working);
 
     newImages.forEach((img) => {
-      simulateUpload(
-        (pct) => {
-          working = working.map((i) => (i.id === img.id ? { ...i, progress: pct } : i));
-          onChange(working);
-        },
-        () => {
-          working = working.map((i) => (i.id === img.id ? { ...i, status: "done", progress: 100 } : i));
-          onChange(working);
-        },
-      );
+      if (img.file) {
+        uploadFileApi(
+          img.file,
+          (pct) => {
+            working = working.map((i) => (i.id === img.id ? { ...i, progress: pct } : i));
+            onChange(working);
+          }
+        )
+          .then((res) => {
+            working = working.map((i) =>
+              i.id === img.id
+                ? { ...i, status: "done", progress: 100, url: res.url, publicId: res.publicId }
+                : i
+            );
+            onChange(working);
+          })
+          .catch(() => {
+            working = working.map((i) =>
+              i.id === img.id ? { ...i, status: "error", progress: 0 } : i
+            );
+            onChange(working);
+          });
+      }
     });
   };
 
@@ -196,10 +210,26 @@ export function DocumentSlot({
       status: "uploading",
     };
     onChange(doc);
-    simulateUpload(
-      (pct) => onChange({ ...doc, progress: pct }),
-      () => onChange({ ...doc, progress: 100, status: "done" }),
-    );
+    uploadFileApi(
+      file,
+      (pct) => onChange({ ...doc, progress: pct })
+    )
+      .then((res) => {
+        onChange({
+          ...doc,
+          progress: 100,
+          status: "done",
+          url: res.url,
+          publicId: res.publicId,
+        });
+      })
+      .catch(() => {
+        onChange({
+          ...doc,
+          progress: 0,
+          status: "error",
+        });
+      });
   };
 
   if (document) {

@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 
 import { authenticate } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -10,6 +11,19 @@ import {
 } from "../validator/product.validator.js";
 
 const router = express.Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
+
+router.post(
+  "/upload",
+  authenticate,
+  upload.single("file"),
+  productController.uploadFile.bind(productController),
+);
 
 /**
  * @swagger

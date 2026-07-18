@@ -10,11 +10,50 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
+// export const sendEmail = async (to: string, subject: string, html: string) => {
+//   await transporter.sendMail({
+//     from: `"B2B Platform" <${process.env.SMTP_USER}>`,
+//     to,
+//     subject,
+//     html,
+//   });
+// };
+
 export const sendEmail = async (to: string, subject: string, html: string) => {
-  await transporter.sendMail({
-    from: `"B2B Platform" <${process.env.SMTP_USER}>`,
-    to,
-    subject,
-    html,
-  });
+  console.log("======================================");
+  console.log("📨 Sending Email...");
+  console.log("From:", process.env.SMTP_USER);
+  console.log("To:", to);
+  console.log("Subject:", subject);
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"B2B Platform" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log("✅ Email sent!");
+    console.log("Message ID:", info.messageId);
+    console.log("Response:", info.response);
+    console.log("======================================");
+
+    return info;
+  } catch (error) {
+    console.error("======================================");
+    console.error("❌ Nodemailer Error:");
+    console.error(error);
+    console.error("======================================");
+    throw error;
+  }
 };
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ SMTP Verify Failed");
+    console.error(error);
+  } else {
+    console.log("✅ SMTP Server Ready");
+  }
+});

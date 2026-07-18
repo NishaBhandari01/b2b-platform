@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import path from "path";
 
 import authRoutes from "./routes/auth.routes.js";
 import rfqRoutes from "./routes/rfq.routes.js";
@@ -37,5 +38,6 @@ app.use("/api/quotations", quotationRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/products", productRoutes);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 export default app;

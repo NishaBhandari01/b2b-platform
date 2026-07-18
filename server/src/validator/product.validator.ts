@@ -28,7 +28,8 @@ const specificationSchema = z.object({
  */
 const shippingInfoSchema = z.object({
   countryOfOrigin: z.string().optional(),
-  productionCapacity: z.number().optional(),
+  // productionCapacity: z.number().optional(),
+  productionCapacity: z.number().nullable().optional(),
   productionUnit: z.string().optional(),
   dispatchTime: z.string().optional(),
   shippingAvailable: z.boolean().optional(),
@@ -37,6 +38,27 @@ const shippingInfoSchema = z.object({
   packagingType: z.string().optional(),
   packageWeight: z.string().optional(),
   packageDimensions: z.string().optional(),
+});
+
+const productImageSchema = z.object({
+  url: z.string().url(),
+  publicId: z.string(),
+  isPrimary: z.boolean().optional(),
+  displayOrder: z.number().optional(),
+});
+
+const productDocumentSchema = z.object({
+  type: z.enum([
+    "brochure",
+    "datasheet",
+    "catalog",
+    "manual",
+    "safety_sheet",
+    "certification",
+  ]),
+  fileName: z.string(),
+  fileUrl: z.string().url(),
+  publicId: z.string().optional(),
 });
 
 /**
@@ -111,6 +133,8 @@ export const createProductSchema = z.object({
   seoTitle: z.string().max(70).optional(),
 
   seoDescription: z.string().max(160).optional(),
+  images: z.array(productImageSchema).optional(),
+  documents: z.array(productDocumentSchema).optional(),
 });
 
 /**

@@ -44,22 +44,139 @@ import {
   type FullFormValues,
 } from "@/lib/schemas/product-schema";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { useRouter } from "next/navigation";
+import { useCreateProduct } from "@/lib/hooks/useProducts";
+
 const TOTAL_STEPS = STEP_META.length;
 
-async function publishProduct(payload: unknown, status: "draft" | "active") {
-  const res = await fetch(`${API_BASE}/api/supplier/products`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ ...(payload as object), status }),
+function mapFormValuesToPayload(
+  values: FullFormValues,
+  status: "draft" | "active",
+) {
+  // Extract images
+  const images: any[] = [];
+  if (values.mainImage?.[0]?.status === "done") {
+    images.push({
+      url: values.mainImage[0].url,
+      publicId: values.mainImage[0].publicId || "main",
+      isPrimary: true,
+      displayOrder: 0,
+    });
+  }
+  values.additionalImages?.forEach((img, idx) => {
+    if (img.status === "done") {
+      images.push({
+        url: img.url,
+        publicId: img.publicId || `add_${idx}`,
+        isPrimary: false,
+        displayOrder: idx + 1,
+      });
+    }
   });
-  if (!res.ok) throw new Error("Failed to save product");
-  return res.json();
+
+  // Extract documents
+  const documents: any[] = [];
+  if (values.documents) {
+    const keyMapping: Record<string, any> = {
+      brochure: "brochure",
+      datasheet: "datasheet",
+      catalog: "catalog",
+      userManual: "manual",
+      safetySheet: "safety_sheet",
+    };
+    Object.entries(values.documents).forEach(([key, doc]) => {
+      if (doc?.status === "done" && doc.url) {
+        documents.push({
+          type: keyMapping[key] || "brochure",
+          fileName: doc.name,
+          fileUrl: doc.url,
+          publicId: doc.publicId,
+        });
+      }
+    });
+  }
+  if (values.certificationFiles) {
+    Object.entries(values.certificationFiles).forEach(([_, doc]) => {
+      if (doc?.status === "done" && doc.url) {
+        documents.push({
+          type: "certification",
+          fileName: doc.name,
+          fileUrl: doc.url,
+          publicId: doc.publicId,
+        });
+      }
+    });
+  }
+
+  // Specifications
+  const specifications =
+    values.specifications?.map((spec) => ({
+      key: spec.key,
+      value: spec.value,
+    })) || [];
+
+  // Shipping Info
+  const shippingInfo = {
+    countryOfOrigin: values.countryOfOrigin,
+    productionCapacity: values.productionCapacity
+      ? Number(values.productionCapacity)
+      : undefined,
+    productionUnit: values.productionUnit,
+    dispatchTime: values.dispatchTime,
+    shippingAvailable: values.shippingAvailable,
+    exportAvailable: values.exportAvailable,
+    deliveryTerms: values.deliveryTerms?.join(", "),
+    packagingType: values.packagingType,
+    packageWeight: values.packageWeight,
+    packageDimensions:
+      values.packageLength || values.packageWidth || values.packageHeight
+        ? `${values.packageLength ?? 0}x${values.packageWidth ?? 0}x${values.packageHeight ?? 0}`
+        : undefined,
+  };
+
+  return {
+    name: values.productName,
+    category: values.category,
+    subCategory: values.subCategory,
+    brand: values.brand,
+    modelNumber: values.modelNumber,
+    sku: values.sku,
+    status,
+    description: values.detailedDescription,
+    shortDescription: values.shortDescription,
+    videoUrl: values.videoUrl || undefined,
+    keyFeatures: values.keyFeatures,
+    applications: values.applications,
+    benefits: values.benefits,
+    priceType: values.priceType,
+    currency: values.currency,
+    price: values.priceType === "fixed" ? Number(values.price) : undefined,
+    minPrice:
+      values.priceType === "range" ? Number(values.minPrice) : undefined,
+    maxPrice:
+      values.priceType === "range" ? Number(values.maxPrice) : undefined,
+    unit: values.unit,
+    minOrderQty: Number(values.moq),
+    moqUnit: values.moqUnit,
+    availableQuantity: Number(values.stock),
+    stockUnit: values.stockUnit,
+    specifications,
+    shippingInfo,
+    certifications: values.certifications,
+    tags: values.tags,
+    keywords: values.keywords,
+    seoTitle: values.metaTitle || undefined,
+    seoDescription: values.metaDescription || undefined,
+    images,
+    documents,
+  };
 }
 
 export default function AddProductPage() {
+  const router = useRouter();
+  const createProductMutation = useCreateProduct();
   const [currentStep, setCurrentStep] = useState(1);
+  const [saveType, setSaveType] = useState<"draft" | "active" | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -120,18 +237,18 @@ export default function AddProductPage() {
   async function validateStep(step: number): Promise<boolean> {
     const schema = stepSchemas[step - 1];
 
-    if (step === 2) {
-      const mainImage = getValues("mainImage");
-      if (!mainImage || mainImage.length === 0) {
-        setError("mainImage" as any, {
-          type: "manual",
-          message: "Upload a main product image",
-        });
-        return false;
-      }
-      clearErrors("mainImage" as any);
-      return true;
-    }
+    // if (step === 2) {
+    //   const mainImage = getValues("mainImage");
+    //   if (!mainImage || mainImage.length === 0) {
+    //     setError("mainImage" as any, {
+    //       type: "manual",
+    //       message: "Upload a main product image",
+    //     });
+    //     return false;
+    //   }
+    //   clearErrors("mainImage" as any);
+    //   return true;
+    // }
 
     if (!schema) return true; // steps 8 & 10 have no required schema
 
@@ -180,27 +297,95 @@ export default function AddProductPage() {
   }
 
   /* -------------------------- mutations -------------------------- */
-  const saveMutation = useMutation({
-    mutationFn: (status: "draft" | "active") =>
-      publishProduct(getValues(), status),
-    onSuccess: (_data, status) => {
-      clearDraft();
-      toast.success(status === "draft" ? "Draft saved" : "Product published", {
-        description:
-          status === "draft"
-            ? "You can find it under Draft Products and finish it anytime."
-            : "Your product is now live in the marketplace.",
-      });
-    },
-    onError: () => {
-      toast.error("Something went wrong", {
-        description: "We couldn't save this product. Please try again.",
-      });
-    },
-  });
+  // async function performMutation(status: "draft" | "active") {
+  //   setSaveType(status);
+  //   const payload = mapFormValuesToPayload(getValues(), status);
+  //   createProductMutation.mutate(payload, {
+  //     onSuccess: () => {
+  //       clearDraft();
+  //       toast.success(
+  //         status === "draft" ? "Draft saved" : "Product published",
+  //         {
+  //           description:
+  //             status === "draft"
+  //               ? "You can find it under Draft Products and finish it anytime."
+  //               : "Your product is now live in the marketplace.",
+  //         },
+  //       );
+  //       router.push("/supplier/products");
+  //     },
+  //     onError: (err: any) => {
+  //       toast.error("Something went wrong", {
+  //         description:
+  //           err.response?.data?.message ||
+  //           "We couldn't save this product. Please try again.",
+  //       });
+  //     },
+  //     onSettled: () => {
+  //       setSaveType(null);
+  //     },
+  //   });
+  // }
 
+  async function performMutation(status: "draft" | "active") {
+    setSaveType(status);
+
+    const payload = mapFormValuesToPayload(getValues(), status);
+
+    console.log("========== PRODUCT PAYLOAD ==========");
+    console.log(JSON.stringify(payload, null, 2));
+
+    // createProductMutation.mutate(payload, {
+
+    //   onSuccess: () => {
+    //     clearDraft();
+    //     toast.success(
+    //       status === "draft" ? "Draft saved" : "Product published",
+    //       {
+    //         description:
+    //           status === "draft"
+    //             ? "You can find it under Draft Products and finish it anytime."
+    //             : "Your product is now live in the marketplace.",
+    //       },
+    //     );
+    //     router.push("/supplier/products");
+    //   },
+    //   onError: (err: any) => {
+    //     toast.error("Something went wrong", {
+    //       description:
+    //         err.response?.data?.message ||
+    //         "We couldn't save this product. Please try again.",
+    //     });
+    //   },
+    //   onSettled: () => {
+    //     setSaveType(null);
+    //   },
+    // });
+
+    createProductMutation.mutate(payload, {
+      onSuccess: (response) => {
+        clearDraft();
+
+        toast.success(response.message);
+
+        router.push("/supplier/products");
+      },
+
+      onError: (err: any) => {
+        toast.error("Something went wrong", {
+          description:
+            err.response?.data?.message ||
+            "We couldn't save this product. Please try again.",
+        });
+      },
+
+      onSettled: () => {
+        setSaveType(null);
+      },
+    });
+  }
   async function handleSaveDraft() {
-    saveMutation.mutate("draft");
+    await performMutation("draft");
   }
 
   async function handlePublish() {
@@ -212,11 +397,11 @@ export default function AddProductPage() {
       goToStep(invalidStep);
       return;
     }
-    saveMutation.mutate("active");
+    await performMutation("active");
   }
 
   const isLastStep = currentStep === TOTAL_STEPS;
-  const isSaving = saveMutation.isPending;
+  const isSaving = createProductMutation.isPending;
 
   if (isInitializing) {
     return <PageSkeleton />;
@@ -316,7 +501,7 @@ export default function AddProductPage() {
                     disabled={isSaving}
                     className="h-10 gap-1.5 border-slate-200 text-sm font-semibold text-slate-600"
                   >
-                    {isSaving && saveMutation.variables === "draft" ? (
+                    {isSaving && saveType === "draft" ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Save className="h-4 w-4" />
@@ -343,7 +528,7 @@ export default function AddProductPage() {
                       disabled={isSaving}
                       className="h-10 gap-1.5 bg-emerald-600 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 hover:bg-emerald-700"
                     >
-                      {isSaving && saveMutation.variables === "active" ? (
+                      {isSaving && saveType === "active" ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Rocket className="h-4 w-4" />

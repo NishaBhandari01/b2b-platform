@@ -42,6 +42,7 @@ export interface UploadedImage {
   size: number;
   progress: number; // 0-100
   status: "uploading" | "done" | "error";
+  publicId?: string;
 }
 
 export interface UploadedDocument {
@@ -51,6 +52,8 @@ export interface UploadedDocument {
   size: number;
   progress: number;
   status: "uploading" | "done" | "error";
+  url?: string;
+  publicId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -77,11 +80,11 @@ export const step1Schema = z.object({
 export const step3Schema = z.object({
   shortDescription: z
     .string()
-    .min(20, "Short description must be at least 20 characters")
+    .min(10, "Short description must be at least 10 characters")
     .max(220, "Keep the short description under 220 characters"),
   detailedDescription: z
     .string()
-    .min(50, "Detailed description must be at least 50 characters"),
+    .min(10, "Detailed description must be at least 10 characters"),
   keyFeatures: z
     .array(z.string().min(1))
     .min(1, "Add at least one key feature"),
@@ -106,37 +109,43 @@ export const step4BaseSchema = z.object({
   stockUnit: z.string().min(1, "Specify a stock unit"),
 });
 
-function refinePricing(data: z.infer<typeof step4BaseSchema>, ctx: z.RefinementCtx) {
-    if (data.priceType === "fixed" && (data.price === undefined || data.price <= 0)) {
+function refinePricing(
+  data: z.infer<typeof step4BaseSchema>,
+  ctx: z.RefinementCtx,
+) {
+  if (
+    data.priceType === "fixed" &&
+    (data.price === undefined || data.price <= 0)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["price"],
+      message: "Enter a fixed price",
+    });
+  }
+  if (data.priceType === "range") {
+    if (!data.minPrice || data.minPrice <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["price"],
-        message: "Enter a fixed price",
+        path: ["minPrice"],
+        message: "Enter a minimum price",
       });
     }
-    if (data.priceType === "range") {
-      if (!data.minPrice || data.minPrice <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["minPrice"],
-          message: "Enter a minimum price",
-        });
-      }
-      if (!data.maxPrice || data.maxPrice <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["maxPrice"],
-          message: "Enter a maximum price",
-        });
-      }
-      if (data.minPrice && data.maxPrice && data.minPrice > data.maxPrice) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["maxPrice"],
-          message: "Maximum price must be greater than minimum price",
-        });
-      }
+    if (!data.maxPrice || data.maxPrice <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxPrice"],
+        message: "Enter a maximum price",
+      });
     }
+    if (data.minPrice && data.maxPrice && data.minPrice > data.maxPrice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxPrice"],
+        message: "Maximum price must be greater than minimum price",
+      });
+    }
+  }
 }
 
 export const step4Schema = step4BaseSchema.superRefine(refinePricing);
@@ -165,12 +174,14 @@ export const step5Schema = z.object({
 
 export const step6Schema = z.object({
   countryOfOrigin: z.string().min(1, "Select a country of origin"),
-  productionCapacity: z.string().min(1, "Enter production capacity"),
+  productionCapacity: z.string().nullable(),
   productionUnit: z.string().min(1, "Specify a unit (e.g. units/month)"),
   dispatchTime: z.string().min(1, "Enter dispatch time (e.g. 7-10 days)"),
   shippingAvailable: z.boolean().default(true),
   exportAvailable: z.boolean().default(true),
-  deliveryTerms: z.array(z.enum(DELIVERY_TERMS)).min(1, "Select at least one delivery term"),
+  deliveryTerms: z
+    .array(z.enum(DELIVERY_TERMS))
+    .min(1, "Select at least one delivery term"),
   packagingType: z.string().min(1, "Describe the packaging type"),
   packageWeight: z.string().min(1, "Enter package weight"),
   packageLength: z.string().optional(),
@@ -241,12 +252,20 @@ export const stepSchemas = [
 ];
 
 export const STEP_META = [
-  { id: 1, title: "Basic Information", description: "Name, category & identifiers" },
+  {
+    id: 1,
+    title: "Basic Information",
+    description: "Name, category & identifiers",
+  },
   { id: 2, title: "Images & Media", description: "Photos and product video" },
   { id: 3, title: "Description", description: "Tell buyers what it is" },
   { id: 4, title: "Pricing & Inventory", description: "Price, MOQ & stock" },
   { id: 5, title: "Specifications", description: "Technical attributes" },
-  { id: 6, title: "Shipping & Manufacturing", description: "Origin & logistics" },
+  {
+    id: 6,
+    title: "Shipping & Manufacturing",
+    description: "Origin & logistics",
+  },
   { id: 7, title: "Certifications", description: "Compliance & quality marks" },
   { id: 8, title: "Documents", description: "Brochures & datasheets" },
   { id: 9, title: "SEO & Tags", description: "Search visibility" },
@@ -256,9 +275,17 @@ export const STEP_META = [
 /** Full wizard form shape: zod-validated fields plus file/media fields that
  *  live outside the schema (File objects aren't JSON-serializable, so they
  *  aren't part of productFormSchema, but they share the same RHF instance). */
+// export interface FullFormValues extends ProductFormValues {
+//   mainImage: UploadedImage[];
+//   additionalImages: UploadedImage[];
+//   videoUrl?: string;
+//   certificationFiles?: Record<string, UploadedDocument | undefined>;
+//   documents?: Record<string, UploadedDocument | undefined>;
+// }
+
 export interface FullFormValues extends ProductFormValues {
-  mainImage: UploadedImage[];
-  additionalImages: UploadedImage[];
+  mainImage?: UploadedImage[];
+  additionalImages?: UploadedImage[];
   videoUrl?: string;
   certificationFiles?: Record<string, UploadedDocument | undefined>;
   documents?: Record<string, UploadedDocument | undefined>;

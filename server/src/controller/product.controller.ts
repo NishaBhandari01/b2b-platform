@@ -2,8 +2,75 @@ import { Response, NextFunction } from "express";
 
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { productService } from "../services/product.service.js";
+import fs from "fs";
+import path from "path";
+import { getBucket, isFirebaseConfigured } from "../config/firebase.js";
 
 export class ProductController {
+  /**
+   * Upload file (Images/Videos/Documents)
+   */
+  async uploadFile(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded.",
+        });
+      }
+
+      const supplierId = req.user!.id;
+
+      if (isFirebaseConfigured) {
+        const bucket = getBucket();
+        if (!bucket) {
+          throw new Error("Firebase bucket not found.");
+        }
+
+        const filename = `products/${supplierId}/${Date.now()}_${file.originalname}`;
+        const fileRef = bucket.file(filename);
+
+        await fileRef.save(file.buffer, {
+          metadata: {
+            contentType: file.mimetype,
+          },
+        });
+
+        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filename)}?alt=media`;
+
+        return res.status(200).json({
+          success: true,
+          url: publicUrl,
+          publicId: filename,
+        });
+      } else {
+        // Local fallback
+        const uploadsDir = path.join(process.cwd(), "uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        const filename = `${Date.now()}_${file.originalname}`;
+        const filepath = path.join(uploadsDir, filename);
+
+        await fs.promises.writeFile(filepath, file.buffer);
+
+        const protocol = req.protocol;
+        const host = req.get("host");
+        const publicUrl = `${protocol}://${host}/uploads/${filename}`;
+
+        return res.status(200).json({
+          success: true,
+          url: publicUrl,
+          publicId: filename,
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Create Product
    */
