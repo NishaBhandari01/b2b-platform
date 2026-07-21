@@ -11,7 +11,9 @@ export function StepMedia() {
   const { watch, setValue, formState } = useFormContext<FullFormValues>();
   const mainImage = watch("mainImage") ?? [];
   const additionalImages = watch("additionalImages") ?? [];
-  const mainImageError = (formState as any).errors?.mainImage?.message as string | undefined;
+  const mainImageError = (formState as any).errors?.mainImage?.message as
+    | string
+    | undefined;
 
   return (
     <div className="space-y-5">
@@ -22,10 +24,14 @@ export function StepMedia() {
       >
         <Field label="" error={mainImageError}>
           <ImageDropzone
-            images={mainImage}
-            onChange={(imgs) => setValue("mainImage", imgs.slice(0, 1), { shouldValidate: true })}
+            images={mainImage || []}
+            onChange={(imgs) =>
+              setValue("mainImage", imgs, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
             multiple={false}
-            helperText="Square images work best — PNG or JPG, up to 10MB"
           />
         </Field>
       </SectionCard>

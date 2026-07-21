@@ -21,7 +21,7 @@ const upload = multer({
 router.post(
   "/upload",
   authenticate,
-  upload.single("file"),
+  upload.array("files", 10),
   productController.uploadFile.bind(productController),
 );
 

@@ -2,7 +2,10 @@
 
 import { useRef, useState } from "react";
 import { UploadCloud, X, FileText, Star, Loader2 } from "lucide-react";
-import type { UploadedImage, UploadedDocument } from "@/lib/schemas/product-schema";
+import type {
+  UploadedImage,
+  UploadedDocument,
+} from "@/lib/schemas/product-schema";
 import { uploadFileApi } from "@/lib/api/product.api";
 
 function formatBytes(bytes: number) {
@@ -45,7 +48,9 @@ export function ImageDropzone({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (fileList: FileList | File[]) => {
-    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(fileList).filter((f) =>
+      f.type.startsWith("image/"),
+    );
     if (files.length === 0) return;
 
     const room = multiple ? Math.max(0, maxImages - images.length) : 1;
@@ -66,24 +71,29 @@ export function ImageDropzone({
 
     newImages.forEach((img) => {
       if (img.file) {
-        uploadFileApi(
-          img.file,
-          (pct) => {
-            working = working.map((i) => (i.id === img.id ? { ...i, progress: pct } : i));
-            onChange(working);
-          }
-        )
+        uploadFileApi(img.file, (pct) => {
+          working = working.map((i) =>
+            i.id === img.id ? { ...i, progress: pct } : i,
+          );
+          onChange(working);
+        })
           .then((res) => {
             working = working.map((i) =>
               i.id === img.id
-                ? { ...i, status: "done", progress: 100, url: res.url, publicId: res.publicId }
-                : i
+                ? {
+                    ...i,
+                    status: "done",
+                    progress: 100,
+                    url: res.url,
+                    publicId: res.publicId,
+                  }
+                : i,
             );
             onChange(working);
           })
           .catch(() => {
             working = working.map((i) =>
-              i.id === img.id ? { ...i, status: "error", progress: 0 } : i
+              i.id === img.id ? { ...i, status: "error", progress: 0 } : i,
             );
             onChange(working);
           });
@@ -91,7 +101,8 @@ export function ImageDropzone({
     });
   };
 
-  const removeImage = (id: string) => onChange(images.filter((i) => i.id !== id));
+  const removeImage = (id: string) =>
+    onChange(images.filter((i) => i.id !== id));
 
   return (
     <div>
@@ -126,7 +137,9 @@ export function ImageDropzone({
         </div>
         <p className="text-[13px] font-semibold text-slate-700">
           Drag & drop images here, or{" "}
-          <span className="text-emerald-600 underline underline-offset-2">browse</span>
+          <span className="text-emerald-600 underline underline-offset-2">
+            browse
+          </span>
         </p>
         <p className="mt-1 text-[12px] text-slate-400">
           {helperText ?? "PNG or JPG, up to 10MB each"}
@@ -141,12 +154,18 @@ export function ImageDropzone({
               key={img.id}
               className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
             >
-              <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
+              <img
+                src={img.url}
+                alt={img.name}
+                className="h-full w-full object-cover"
+              />
 
               {img.status === "uploading" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-slate-900/55 backdrop-blur-[1px]">
                   <Loader2 className="h-4 w-4 animate-spin text-white" />
-                  <span className="text-[10px] font-semibold text-white">{img.progress}%</span>
+                  <span className="text-[10px] font-semibold text-white">
+                    {img.progress}%
+                  </span>
                   <div className="h-1 w-3/4 overflow-hidden rounded-full bg-white/30">
                     <div
                       className="h-full rounded-full bg-white transition-all"
@@ -210,10 +229,7 @@ export function DocumentSlot({
       status: "uploading",
     };
     onChange(doc);
-    uploadFileApi(
-      file,
-      (pct) => onChange({ ...doc, progress: pct })
-    )
+    uploadFileApi(file, (pct) => onChange({ ...doc, progress: pct }))
       .then((res) => {
         onChange({
           ...doc,
@@ -239,7 +255,9 @@ export function DocumentSlot({
           <FileText className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-slate-800">{label}</p>
+          <p className="truncate text-[13px] font-semibold text-slate-800">
+            {label}
+          </p>
           <p className="truncate text-[12px] text-slate-400">
             {document.name} · {formatBytes(document.size)}
           </p>
@@ -249,6 +267,33 @@ export function DocumentSlot({
                 className="h-full rounded-full bg-emerald-500 transition-all"
                 style={{ width: `${document.progress}%` }}
               />
+            </div>
+          )}
+          {document.status === "done" && document.url && (
+            <div className="mt-1 flex gap-3">
+              <a
+                href={document.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[12px] font-medium text-emerald-600 hover:underline"
+              >
+                See the document
+              </a>
+              <div className="relative inline-block">
+                <input
+                  type="file"
+                  accept={accept}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      handleFile(e.target.files[0]);
+                    }
+                  }}
+                />
+                <button className="text-[12px] font-medium text-slate-600 hover:underline relative z-0">
+                  Replace
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -297,7 +342,11 @@ export function DocumentSlot({
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-slate-700">{label}</p>
         <p className="text-[12px] text-slate-400">
-          Drop a file or <span className="text-emerald-600 underline underline-offset-2">browse</span> · PDF, DOC, DOCX
+          Drop a file or{" "}
+          <span className="text-emerald-600 underline underline-offset-2">
+            browse
+          </span>{" "}
+          · PDF, DOC, DOCX
         </p>
       </div>
     </div>

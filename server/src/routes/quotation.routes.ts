@@ -1,41 +1,134 @@
 import express from "express";
+
 import {
   createQuotation,
   listQuotationsByRFQ,
   acceptQuotation,
   rejectQuotation,
-} from "../controller/quotation.controller";
+} from "../controller/quotation.controller.js";
+
 import { validate } from "../middleware/validate.middleware.js";
 import { createQuotationSchema } from "../validator/rfq.validator.js";
+import { authenticate } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// List quotations for a specific RFQ
-router.get("/:rfqId", async (req, res) => {
-  const { rfqId } = req.params;
-  const result = await listQuotationsByRFQ(rfqId);
-  res.json(result);
-});
+/**
+ * @swagger
+ * tags:
+ *   name: Quotations
+ *   description: RFQ quotation management
+ */
 
-// Create a new quotation (supplier side)
-router.post("/", validate(createQuotationSchema), async (req, res) => {
-  const payload = req.body;
-  const result = await createQuotation(payload);
-  res.status(201).json(result);
-});
+/**
+ * @swagger
+ * /api/quotations/{rfqId}:
+ *   get:
+ *     summary: Get quotations of an RFQ
+ *     tags: [Quotations]
+ *     parameters:
+ *       - in: path
+ *         name: rfqId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Quotations fetched successfully
+ */
+router.get("/:rfqId", listQuotationsByRFQ);
 
-// Accept quotation
-router.patch("/:id/accept", async (req, res) => {
-  const { id } = req.params;
-  const result = await acceptQuotation(id);
-  res.json(result);
-});
+/**
+ * @swagger
+ * /api/quotations:
+ *   post:
+ *     summary: Supplier creates quotation
+ *     tags: [Quotations]
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rfqId
+ *               - price
+ *               - leadTime
+ *               - message
+ *
+ *             properties:
+ *               rfqId:
+ *                 type: string
+ *                 example: cmrq676lx0001burnlha4ba0v
+ *
+ *               price:
+ *                 type: number
+ *                 example: 5000
+ *
+ *               leadTime:
+ *                 type: string
+ *                 example: "15 days"
+ *
+ *               message:
+ *                 type: string
+ *                 example: "We can supply this product"
+ *
+ *     responses:
+ *       201:
+ *         description: Quotation created
+ */
+router.post(
+  "/",
+  authenticate,
+  validate(createQuotationSchema),
+  createQuotation,
+);
 
-// Reject quotation
-router.patch("/:id/reject", async (req, res) => {
-  const { id } = req.params;
-  const result = await rejectQuotation(id);
-  res.json(result);
-});
+/**
+ * @swagger
+ * /api/quotations/{id}/accept:
+ *   patch:
+ *     summary: Accept quotation
+ *     tags: [Quotations]
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *
+ *     responses:
+ *       200:
+ *         description: Quotation accepted
+ */
+router.patch("/:id/accept", authenticate, acceptQuotation);
+
+/**
+ * @swagger
+ * /api/quotations/{id}/reject:
+ *   patch:
+ *     summary: Reject quotation
+ *     tags: [Quotations]
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *
+ *     responses:
+ *       200:
+ *         description: Quotation rejected
+ */
+router.patch("/:id/reject", authenticate, rejectQuotation);
 
 export default router;

@@ -2,12 +2,12 @@
 import http from "http";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
-import { execSync } from "child_process";
-import prisma from "./config/db.js";
-import app from "./app.js";
 
 dotenv.config();
 
+import { execSync } from "child_process";
+import prisma from "./config/db.js";
+import app from "./app.js";
 // Create HTTP server and attach Socket.io
 const httpServer = http.createServer(app);
 export const io = new Server(httpServer, {

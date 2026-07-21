@@ -1,5 +1,4 @@
 import slugify from "slugify";
-import { Prisma } from "@prisma/client";
 
 import productRepository from "../repository/product.repository.js";
 import { AuthRepository } from "../repository/auth.repository.js";
@@ -7,10 +6,7 @@ import { AuthRepository } from "../repository/auth.repository.js";
 const authRepository = new AuthRepository();
 
 export class ProductService {
-  async createProduct(
-    supplierId: string,
-    productData: any,
-  ) {
+  async createProduct(supplierId: string, productData: any) {
     // Check supplier exists
     const supplier = await authRepository.findUserById(supplierId);
 
@@ -39,27 +35,29 @@ export class ProductService {
 
     const { images, documents, ...rest } = productData;
 
-    const formattedImages = images && Array.isArray(images)
-      ? {
-          create: images.map((img: any) => ({
-            url: img.url,
-            publicId: img.publicId,
-            isPrimary: img.isPrimary ?? false,
-            displayOrder: img.displayOrder ?? 0,
-          })),
-        }
-      : undefined;
+    const formattedImages =
+      images && Array.isArray(images)
+        ? {
+            create: images.map((img: any) => ({
+              url: img.url,
+              publicId: img.publicId,
+              isPrimary: img.isPrimary ?? false,
+              displayOrder: img.displayOrder ?? 0,
+            })),
+          }
+        : undefined;
 
-    const formattedDocuments = documents && Array.isArray(documents)
-      ? {
-          create: documents.map((doc: any) => ({
-            type: doc.type,
-            fileName: doc.fileName,
-            fileUrl: doc.fileUrl,
-            publicId: doc.publicId || "",
-          })),
-        }
-      : undefined;
+    const formattedDocuments =
+      documents && Array.isArray(documents)
+        ? {
+            create: documents.map((doc: any) => ({
+              type: doc.type,
+              fileName: doc.fileName,
+              fileUrl: doc.fileUrl,
+              publicId: doc.publicId || "",
+            })),
+          }
+        : undefined;
 
     // Create Product
     return await productRepository.createProduct({
@@ -105,11 +103,7 @@ export class ProductService {
     return product;
   }
 
-  async updateProduct(
-    productId: string,
-    supplierId: string,
-    productData: any,
-  ) {
+  async updateProduct(productId: string, supplierId: string, productData: any) {
     const product = await productRepository.findSupplierProduct(
       productId,
       supplierId,

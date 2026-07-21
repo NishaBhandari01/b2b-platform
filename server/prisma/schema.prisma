@@ -25,7 +25,11 @@ model User {
   sentMessages     Message[]   @relation("sentMessages")
   receivedMessages Message[]   @relation("receivedMessages")
 
-  products Product[] @relation("SupplierProducts")
+  products       Product[] @relation("SupplierProducts")
+  buyerOrders    Order[]   @relation("BuyerOrders")
+  supplierOrders Order[]   @relation("SupplierOrders")
+
+  companyProfile CompanyProfile?
 }
 
 enum UserRole {
@@ -40,13 +44,13 @@ enum UserRole {
 //   closed
 // }
 
-
 enum RFQStatus {
   draft
   published
   expired
   closed
 }
+
 enum QuotationStatus {
   pending
   accepted
@@ -68,22 +72,23 @@ model Rfq {
   user        User        @relation(fields: [userId], references: [id])
   quotations  Quotation[]
   messages    Message[]
+  orders Order[] 
 }
 
 model Quotation {
-  id         String          @id @default(cuid())
-  rfqId      String
-  rfq        Rfq             @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  supplierId String
-  supplier   User            @relation(fields: [supplierId], references: [id])
-  price      Float
-  leadTime   String
-  message    String
-  status     QuotationStatus @default(pending)
-
-  conversation Conversation? @relation("QuotationConversation")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id           String          @id @default(cuid())
+  rfqId        String
+  rfq          Rfq             @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplierId   String
+  supplier     User            @relation(fields: [supplierId], references: [id])
+  price        Float
+  leadTime     String
+  message      String
+  status       QuotationStatus @default(pending)
+  order        Order?
+  conversation Conversation?   @relation("QuotationConversation")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }
 
 model Conversation {
@@ -137,6 +142,15 @@ enum ProductDocumentType {
   manual
   safety_sheet
   certification
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
 }
 
 model Product {
@@ -254,4 +268,91 @@ model ProductDocument {
   createdAt DateTime @default(now())
 
   @@index([productId])
+}
+
+model CompanyProfile {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  name        String
+  gstNumber   String?
+  panNumber   String?
+  established String?
+  employees   String?
+  description String?
+  verified    Boolean   @default(false)
+  verifiedAt  DateTime?
+
+  documents      CompanyDocument[]
+  certifications Certification[]
+  branches       Branch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CompanyDocument {
+  id String @id @default(uuid())
+
+  companyId String
+  company   CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name   String
+  url    String
+  status String @default("pending")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Certification {
+  id String @id @default(uuid())
+
+  companyId String
+  company   CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id String @id @default(uuid())
+
+  companyId String
+  company   CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  label    String
+  location String
+
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  quotationId String    @unique
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  rfqId   String
+   rfq Rfq @relation(fields: [rfqId], references: [id])
+
+  buyerId String
+  buyer   User   @relation("BuyerOrders", fields: [buyerId], references: [id])
+
+  supplierId String
+  supplier   User   @relation("SupplierOrders", fields: [supplierId], references: [id])
+
+  amount Float
+
+  status OrderStatus @default(pending)
+
+  paymentStatus String @default("unpaid")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

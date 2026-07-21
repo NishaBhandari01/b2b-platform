@@ -74,6 +74,9 @@ export function StepShipping() {
   } = useFormContext<ProductFormValues>();
 
   const deliveryTerms = watch("deliveryTerms") ?? [];
+  const countryOfOrigin = watch("countryOfOrigin") ?? "";
+  const shippingAvailable = watch("shippingAvailable") ?? false;
+  const exportAvailable = watch("exportAvailable") ?? false;
 
   const toggleTerm = (term: (typeof DELIVERY_TERMS)[number]) => {
     const next = deliveryTerms.includes(term)
@@ -96,9 +99,12 @@ export function StepShipping() {
             error={errors.countryOfOrigin?.message as string}
           >
             <Select
-              value={watch("countryOfOrigin")}
-              onValueChange={(v: any) =>
-                setValue("countryOfOrigin", v, { shouldValidate: true })
+              value={countryOfOrigin}
+              onValueChange={(value: any) =>
+                setValue("countryOfOrigin", value, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
               }
             >
               <SelectTrigger className="h-10 border-slate-200 text-sm focus:ring-emerald-200">

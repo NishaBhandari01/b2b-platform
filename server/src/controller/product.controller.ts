@@ -2,70 +2,92 @@ import { Response, NextFunction } from "express";
 
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { productService } from "../services/product.service.js";
-import fs from "fs";
-import path from "path";
-import { getBucket, isFirebaseConfigured } from "../config/firebase.js";
+
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+
+import { r2, bucketName } from "../config/r2.js";
 
 export class ProductController {
   /**
    * Upload file (Images/Videos/Documents)
    */
+  // async uploadFile(req: AuthRequest, res: Response, next: NextFunction) {
+  //   try {
+  //     const file = req.file;
+  //     if (!file) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "No file uploaded.",
+  //       });
+  //     }
+
+  //     const supplierId = req.user!.id;
+  //     const filename = `products/${supplierId}/${Date.now()}_${file.originalname}`;
+
+  //     await r2.send(
+  //       new PutObjectCommand({
+  //         Bucket: bucketName,
+  //         Key: filename,
+  //         Body: file.buffer,
+  //         ContentType: file.mimetype,
+  //       }),
+  //     );
+
+  //     // Using the R2 endpoint as the base for the URL for now
+  //     // This may not work if the bucket is not public without a custom domain.
+  //     // But it is standard practice to return the object URL.
+  //     const publicUrl = `${process.env.R2_ENDPOINT}/${bucketName}/${filename}`;
+
+  //     return res.status(200).json({
+  //       success: true,
+  //       url: publicUrl,
+  //       publicId: filename,
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // }
+
   async uploadFile(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const file = req.file;
-      if (!file) {
+      const files = req.files as Express.Multer.File[];
+
+      if (!files || files.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "No file uploaded.",
+          message: "No files uploaded",
         });
       }
 
       const supplierId = req.user!.id;
 
-      if (isFirebaseConfigured) {
-        const bucket = getBucket();
-        if (!bucket) {
-          throw new Error("Firebase bucket not found.");
-        }
+      const uploadedFiles = [];
 
-        const filename = `products/${supplierId}/${Date.now()}_${file.originalname}`;
-        const fileRef = bucket.file(filename);
+      for (const file of files) {
+        const filename = `products/${supplierId}/${Date.now()}-${file.originalname}`;
 
-        await fileRef.save(file.buffer, {
-          metadata: {
-            contentType: file.mimetype,
-          },
-        });
+        await r2.send(
+          new PutObjectCommand({
+            Bucket: bucketName,
+            Key: filename,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+          }),
+        );
 
-        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filename)}?alt=media`;
+        uploadedFiles.push({
+          url: `${process.env.R2_ENDPOINT}/${filename}`,
 
-        return res.status(200).json({
-          success: true,
-          url: publicUrl,
           publicId: filename,
-        });
-      } else {
-        // Local fallback
-        const uploadsDir = path.join(process.cwd(), "uploads");
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
 
-        const filename = `${Date.now()}_${file.originalname}`;
-        const filepath = path.join(uploadsDir, filename);
-
-        await fs.promises.writeFile(filepath, file.buffer);
-
-        const protocol = req.protocol;
-        const host = req.get("host");
-        const publicUrl = `${protocol}://${host}/uploads/${filename}`;
-
-        return res.status(200).json({
-          success: true,
-          url: publicUrl,
-          publicId: filename,
+          type: file.mimetype,
         });
       }
+
+      return res.status(200).json({
+        success: true,
+        files: uploadedFiles,
+      });
     } catch (error) {
       next(error);
     }

@@ -106,14 +106,18 @@ export const uploadFileApi = async (
   onProgress: (pct: number) => void,
 ) => {
   const formData = new FormData();
-  formData.append("file", file);
+
+  formData.append("files", file);
 
   const response = await axios.post(
     `${API_URL}/api/products/upload`,
     formData,
     {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
       withCredentials: true,
+
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
           onProgress(
@@ -123,6 +127,15 @@ export const uploadFileApi = async (
       },
     },
   );
+
+  if (response.data.files && response.data.files.length > 0) {
+    return {
+      success: response.data.success,
+      url: response.data.files[0].url,
+      publicId: response.data.files[0].publicId,
+    };
+  }
+
   return response.data;
 };
 

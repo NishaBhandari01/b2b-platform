@@ -62,7 +62,47 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   return data as T;
 }
+async function acceptQuotation(quotationId: string) {
+  const response = await fetch(
+    `${API_URL}/api/quotations/${quotationId}/accept`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
 
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to accept quotation");
+  }
+
+  return data;
+}
+
+async function rejectQuotation(quotationId: string) {
+  const response = await fetch(
+    `${API_URL}/api/quotations/${quotationId}/reject`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to reject quotation");
+  }
+
+  return data;
+}
 // Shared input styling so every field in both forms looks identical
 const fieldClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10";
@@ -187,6 +227,45 @@ export default function BuyerRFQs() {
     },
     onError: (err) => {
       error("Delete failed", (err as Error).message);
+    },
+  });
+
+  // ✅ ADD HERE
+  const rejectQuotationMutation = useMutation({
+    mutationFn: (quotationId: string) => rejectQuotation(quotationId),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["rfq", selectedRFQId],
+      });
+
+      toast.success("Quotation rejected");
+    },
+
+    onError: (error: any) => {
+      toast.error(error.message || "Reject failed");
+    },
+  });
+
+  const acceptQuotationMutation = useMutation({
+    mutationFn: (quotationId: string) => acceptQuotation(quotationId),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["rfq", selectedRFQId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["rfqs", "buyer"],
+      });
+
+      toast.success(
+        `Order ${data.data.order.orderNumber} created successfully`,
+      );
+    },
+
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to accept quotation");
     },
   });
 
@@ -625,6 +704,41 @@ export default function BuyerRFQs() {
                           >
                             {quotation.status}
                           </Badge>
+                          {quotation.status === "pending" && (
+                            <div className="flex gap-2">
+                              {/* Accept Button */}
+                              <button
+                                onClick={() =>
+                                  acceptQuotationMutation.mutate(quotation.id)
+                                }
+                                disabled={
+                                  acceptQuotationMutation.isPending ||
+                                  rejectQuotationMutation.isPending
+                                }
+                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {acceptQuotationMutation.isPending
+                                  ? "Accepting..."
+                                  : "Accept"}
+                              </button>
+
+                              {/* Reject Button */}
+                              <button
+                                onClick={() =>
+                                  rejectQuotationMutation.mutate(quotation.id)
+                                }
+                                disabled={
+                                  acceptQuotationMutation.isPending ||
+                                  rejectQuotationMutation.isPending
+                                }
+                                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                              >
+                                {rejectQuotationMutation.isPending
+                                  ? "Rejecting..."
+                                  : "Reject"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
 

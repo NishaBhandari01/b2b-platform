@@ -11,6 +11,8 @@ import quotationRoutes from "./routes/quotation.routes.js";
 import conversationRoutes from "./routes/conversation.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import productRoutes from "./routes/product.routes.js";
+import companyRoutes from "./routes/company.routes.js";
+import orderRoutes from "./routes/order.routes.js";
 import { setupSwagger } from "./config/swagger.js";
 
 const app = express();
@@ -38,6 +40,8 @@ app.use("/api/quotations", quotationRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/company", companyRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 export default app;
