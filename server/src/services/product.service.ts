@@ -1,181 +1,172 @@
-import slugify from "slugify";
-
 import productRepository from "../repository/product.repository.js";
-import { AuthRepository } from "../repository/auth.repository.js";
+import {
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
+import { r2, bucketName, R2_PUBLIC_BASE_URL } from "../config/r2.js";
 
-const authRepository = new AuthRepository();
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
 
-export class ProductService {
-  async createProduct(supplierId: string, productData: any) {
-    // Check supplier exists
-    const supplier = await authRepository.findUserById(supplierId);
+const BASIC_INFO_FIELDS = [
+  "name",
+  "category",
+  "subCategory",
+  "brand",
+  "modelNumber",
+  "sku",
+  "shortDescription",
+  "description",
+  "priceType",
+  "currency",
+  "price",
+  "minPrice",
+  "maxPrice",
+  "unit",
+  "minOrderQty",
+  "moqUnit",
+  "availableQuantity",
+  "stockUnit",
+  "tags",
+  "keywords",
+];
 
-    if (!supplier) {
-      throw new Error("Supplier not found.");
-    }
+const MEDIA_DETAIL_FIELDS = [
+  "keyFeatures",
+  "applications",
+  "benefits",
+  "specifications",
+  "shippingInfo",
+  "certifications",
+  "videoUrl",
+];
 
-    // Only suppliers can create products
-    if (supplier.role !== "supplier") {
-      throw new Error("Only suppliers can create products.");
-    }
+function pick(source: any, keys: string[]) {
+  const result: any = {};
+  for (const key of keys) {
+    if (source[key] !== undefined) result[key] = source[key];
+  }
+  return result;
+}
 
-    // Generate slug
-    let slug = slugify(productData.name, {
-      lower: true,
-      strict: true,
-      trim: true,
-    });
+class ProductService {
+  async createDraft(supplierId: string, data: any) {
+    if (!data.name) throw new Error("Product name is required");
+    if (!data.category) throw new Error("Category is required");
+    if (!data.description) throw new Error("Description is required");
 
-    // Ensure slug is unique
-    const existingProduct = await productRepository.findProductBySlug(slug);
+    const slug = `${slugify(data.name)}-${randomUUID().slice(0, 6)}`;
 
-    if (existingProduct) {
-      slug = `${slug}-${Date.now()}`;
-    }
-
-    const { images, documents, ...rest } = productData;
-
-    const formattedImages =
-      images && Array.isArray(images)
-        ? {
-            create: images.map((img: any) => ({
-              url: img.url,
-              publicId: img.publicId,
-              isPrimary: img.isPrimary ?? false,
-              displayOrder: img.displayOrder ?? 0,
-            })),
-          }
-        : undefined;
-
-    const formattedDocuments =
-      documents && Array.isArray(documents)
-        ? {
-            create: documents.map((doc: any) => ({
-              type: doc.type,
-              fileName: doc.fileName,
-              fileUrl: doc.fileUrl,
-              publicId: doc.publicId || "",
-            })),
-          }
-        : undefined;
-
-    // Create Product
-    return await productRepository.createProduct({
-      ...rest,
+    return productRepository.createProduct({
+      supplierId,
       slug,
-      supplier: {
-        connect: {
-          id: supplierId,
-        },
-      },
-      images: formattedImages,
-      documents: formattedDocuments,
+      status: "draft",
+      ...pick(data, BASIC_INFO_FIELDS),
     });
   }
 
-  async getProductById(productId: string) {
-    const product = await productRepository.findProductById(productId);
-
-    if (!product) {
-      throw new Error("Product not found.");
+  async getProduct(id: string, supplierId: string) {
+    const product = await productRepository.getProductById(id);
+    if (!product || product.supplierId !== supplierId) {
+      throw new Error("Product not found");
     }
-
     return product;
   }
 
   async getSupplierProducts(supplierId: string) {
-    const supplier = await authRepository.findUserById(supplierId);
-
-    if (!supplier) {
-      throw new Error("Supplier not found.");
-    }
-
-    return await productRepository.findSupplierProducts(supplierId);
+    return productRepository.getSupplierProducts(supplierId);
   }
 
-  async getProductBySlug(slug: string) {
-    const product = await productRepository.findProductBySlug(slug);
-
-    if (!product) {
-      throw new Error("Product not found.");
-    }
-
-    return product;
+  async updateBasicInfo(id: string, supplierId: string, data: any) {
+    await this.getProduct(id, supplierId);
+    return productRepository.updateProduct(id, pick(data, BASIC_INFO_FIELDS));
   }
 
-  async updateProduct(productId: string, supplierId: string, productData: any) {
-    const product = await productRepository.findSupplierProduct(
-      productId,
-      supplierId,
-    );
+  async publishProduct(id: string, supplierId: string, data: any) {
+    const product = await this.getProduct(id, supplierId);
 
-    if (!product) {
-      throw new Error("Product not found or unauthorized.");
+    const imageCount = await productRepository.countImages(id);
+    if (imageCount === 0) {
+      throw new Error("Add at least one product image before publishing");
     }
 
-    const { images, documents, ...rest } = productData;
-
-    let imagesUpdate: any = undefined;
-    if (images && Array.isArray(images)) {
-      imagesUpdate = {
-        deleteMany: {},
-        create: images.map((img: any) => ({
-          url: img.url,
-          publicId: img.publicId,
-          isPrimary: img.isPrimary ?? false,
-          displayOrder: img.displayOrder ?? 0,
-        })),
-      };
-    }
-
-    let documentsUpdate: any = undefined;
-    if (documents && Array.isArray(documents)) {
-      documentsUpdate = {
-        deleteMany: {},
-        create: documents.map((doc: any) => ({
-          type: doc.type,
-          fileName: doc.fileName,
-          fileUrl: doc.fileUrl,
-          publicId: doc.publicId || "",
-        })),
-      };
-    }
-
-    return await productRepository.updateProduct(productId, {
-      ...rest,
-      images: imagesUpdate,
-      documents: documentsUpdate,
-    });
-  }
-
-  async deleteProduct(productId: string, supplierId: string) {
-    const product = await productRepository.findSupplierProduct(
-      productId,
-      supplierId,
-    );
-
-    if (!product) {
-      throw new Error("Product not found or unauthorized.");
-    }
-
-    return await productRepository.softDeleteProduct(productId);
-  }
-
-  async publishProduct(productId: string, supplierId: string) {
-    const product = await productRepository.findSupplierProduct(
-      productId,
-      supplierId,
-    );
-
-    if (!product) {
-      throw new Error("Product not found or unauthorized.");
-    }
-
-    return await productRepository.updateProduct(productId, {
+    return productRepository.updateProduct(id, {
+      ...pick(data, MEDIA_DETAIL_FIELDS),
       status: "active",
-      publishedAt: new Date(),
+      publishedAt: product.publishedAt ?? new Date(),
     });
+  }
+
+  async uploadImage(
+    id: string,
+    supplierId: string,
+    file: Express.Multer.File,
+    isPrimary: boolean,
+  ) {
+    const product = await this.getProduct(id, supplierId);
+
+    const ext = file.originalname.split(".").pop();
+    const fileKey = `products/${product.id}/images/${randomUUID()}.${ext}`;
+
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }),
+    );
+
+    const url = R2_PUBLIC_BASE_URL
+      ? `${R2_PUBLIC_BASE_URL}/${fileKey}`
+      : await getSignedUrl(
+          r2,
+          new GetObjectCommand({ Bucket: bucketName, Key: fileKey }),
+          { expiresIn: 60 * 60 * 24 * 7 },
+        );
+
+    const existingCount = await productRepository.countImages(product.id);
+    const makePrimary = isPrimary || existingCount === 0; // first image is always primary
+
+    if (makePrimary) {
+      await productRepository.unsetPrimaryImages(product.id);
+    }
+
+    return productRepository.addImage(product.id, {
+      url,
+      publicId: fileKey,
+      isPrimary: makePrimary,
+      displayOrder: existingCount,
+    });
+  }
+
+  async deleteImage(id: string, supplierId: string, imageId: string) {
+    await this.getProduct(id, supplierId);
+    const image = await productRepository.getImageById(imageId);
+    if (!image || image.productId !== id) {
+      throw new Error("Image not found");
+    }
+
+    if (R2_PUBLIC_BASE_URL) {
+      try {
+        await r2.send(
+          new DeleteObjectCommand({ Bucket: bucketName, Key: image.publicId }),
+        );
+      } catch (e) {
+        console.warn("Failed to delete R2 object:", (e as Error).message);
+      }
+    }
+
+    return productRepository.deleteImage(imageId);
   }
 }
 
-export const productService = new ProductService();
+export default new ProductService();

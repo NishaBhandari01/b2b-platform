@@ -204,7 +204,7 @@ export default function BuyerOrders() {
           />
         </div>
 
-        <Select value={status} onValueChange={(value) => setStatus(value)}>
+        <Select value={status} onValueChange={(value: any) => setStatus(value)}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>

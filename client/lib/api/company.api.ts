@@ -1,22 +1,3 @@
-// import axios from "axios";
-
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-// export const getCompanyProfile = async () => {
-//   const response = await axios.get(`${API_URL}/api/company/profile`, {
-//     withCredentials: true,
-//   });
-//   return response.data;
-// };
-
-// export const updateCompanyProfile = async (data: any) => {
-//   const response = await axios.put(`${API_URL}/api/company/profile`, data, {
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
-
 import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";

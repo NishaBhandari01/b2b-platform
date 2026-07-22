@@ -1,174 +1,180 @@
 // import axios from "axios";
-// import type { GetProductsResponse } from "@/types/product";
-
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-// export const createProduct = async (data: any) => {
-//   const response = await axios.post(`${API_URL}/api/products`, data, {
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
-
-// export const uploadFileApi = async (
-//   file: File,
-//   onProgress: (pct: number) => void,
-// ) => {
-//   const formData = new FormData();
-//   formData.append("file", file);
-
-//   const response = await axios.post(
-//     `${API_URL}/api/products/upload`,
-//     formData,
-//     {
-//       headers: {
-//         "Content-Type": "multipart/form-data",
-//       },
-//       withCredentials: true,
-//       onUploadProgress: (progressEvent) => {
-//         if (progressEvent.total) {
-//           const percentCompleted = Math.round(
-//             (progressEvent.loaded * 100) / progressEvent.total,
-//           );
-//           onProgress(percentCompleted);
-//         }
-//       },
-//     },
-//   );
-
-//   return response.data;
-// };
-
-// export const getMyProducts = async (params?: {
-//   page?: number;
-//   limit?: number;
-//   search?: string;
-//   category?: string;
-//   status?: string;
-//   sort?: string;
-// }) => {
-//   const response = await axios.get(`${API_URL}/api/products/my-products`, {
-//     params,
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
-
-// export const getProducts = async (): Promise<GetProductsResponse> => {
-//   const response = await axios.get(`${API_URL}/api/products`, {
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
-
-// export const getProductById = async (id: string) => {
-//   const response = await axios.get(`${API_URL}/api/products/${id}`, {
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
-
-// export const updateProduct = async (id: string, data: any) => {
-//   const response = await axios.put(`${API_URL}/api/products/${id}`, data, {
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
-
-// export const deleteProduct = async (id: string) => {
-//   const response = await axios.delete(`${API_URL}/api/products/${id}`, {
-//     withCredentials: true,
-//   });
-
-//   return response.data;
-// };
+import type { RawProductsResponse } from "@/types/product";
+import { mapRawProduct } from "@/lib/mappers/product.mapper";
 
 import axios from "axios";
-import type { RawProductsResponse, Product } from "@/types/product";
-import { mapRawProduct } from "@/lib/mappers/product.mapper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-export const createProduct = async (data: any) => {
+export type PriceType = "fixed" | "range" | "rfq";
+export type ProductStatus = "draft" | "active" | "out_of_stock" | "archived";
+
+export interface ProductImage {
+  id: string;
+  url: string;
+  publicId: string;
+  isPrimary: boolean;
+  displayOrder: number;
+}
+
+export interface Product {
+  id: string;
+  supplierId: string;
+  name: string;
+  slug: string;
+  category: string;
+  subCategory?: string | null;
+  brand?: string | null;
+  modelNumber?: string | null;
+  sku?: string | null;
+  status: ProductStatus;
+  shortDescription?: string | null;
+  description: string;
+  keyFeatures?: string[] | null;
+  applications?: string[] | null;
+  benefits?: string[] | null;
+  priceType: PriceType;
+  currency: string;
+  price?: string | null;
+  minPrice?: string | null;
+  maxPrice?: string | null;
+  unit: string;
+  minOrderQty?: number | null;
+  moqUnit?: string | null;
+  availableQuantity?: number | null;
+  stockUnit?: string | null;
+  specifications?: Record<string, string> | null;
+  shippingInfo?: Record<string, string> | null;
+  certifications?: string[] | null;
+  tags: string[];
+  keywords: string[];
+  images: ProductImage[];
+}
+
+export interface BasicInfoPayload {
+  name: string;
+  category: string;
+  subCategory?: string;
+  brand?: string;
+  modelNumber?: string;
+  sku?: string;
+  shortDescription?: string;
+  description: string;
+  priceType: PriceType;
+  currency: string;
+  price?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  unit: string;
+  minOrderQty?: number;
+  moqUnit?: string;
+  availableQuantity?: number;
+  stockUnit?: string;
+  tags?: string[];
+  keywords?: string[];
+}
+
+export interface MediaDetailsPayload {
+  keyFeatures?: string[];
+  specifications?: Record<string, string>;
+  shippingInfo?: Record<string, string>;
+  certifications?: string[];
+}
+
+export const createProductDraft = async (data: BasicInfoPayload) => {
   const response = await axios.post(`${API_URL}/api/products`, data, {
     withCredentials: true,
   });
   return response.data;
 };
 
-export const uploadFileApi = async (
-  file: File,
-  onProgress: (pct: number) => void,
+export const updateProductBasicInfo = async (
+  id: string,
+  data: BasicInfoPayload,
 ) => {
-  const formData = new FormData();
-
-  formData.append("files", file);
-
-  const response = await axios.post(
-    `${API_URL}/api/products/upload`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      withCredentials: true,
-
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          onProgress(
-            Math.round((progressEvent.loaded * 100) / progressEvent.total),
-          );
-        }
-      },
-    },
-  );
-
-  if (response.data.files && response.data.files.length > 0) {
-    return {
-      success: response.data.success,
-      url: response.data.files[0].url,
-      publicId: response.data.files[0].publicId,
-    };
-  }
-
+  const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
+    withCredentials: true,
+  });
   return response.data;
 };
 
-/**
- * Logged-in supplier's own products — confirmed working via Swagger.
- * This is the endpoint the "My Products" page should use.
- */
+// export const getMyProducts = async (id: string) => {
+//   const response = await axios.get(`${API_URL}/api/products/${id}`, {
+//     withCredentials: true,
+//   });
+//   return response.data;
+// };
 export const getMyProducts = async (): Promise<{ data: Product[] }> => {
   const response = await axios.get<RawProductsResponse>(
     `${API_URL}/api/products/my-products`,
-    { withCredentials: true },
+    {
+      withCredentials: true,
+    },
   );
-  return { data: response.data.data.map(mapRawProduct) };
+
+  return {
+    data: response.data.data.map(mapRawProduct),
+  };
 };
 
 export const getProductById = async (id: string): Promise<Product> => {
   const response = await axios.get<{ success: boolean; data: any }>(
     `${API_URL}/api/products/${id}`,
-    { withCredentials: true },
+    {
+      withCredentials: true,
+    },
   );
+
   return mapRawProduct(response.data.data);
 };
 
-export const updateProduct = async (id: string, data: any) => {
-  const response = await axios.put(`${API_URL}/api/products/${id}`, data, {
-    withCredentials: true,
-  });
+// export const getMyProducts = async (): Promise<{ data: Product[] }> => {
+//   const response = await axios.get<RawProductsResponse>(
+//     `${API_URL}/api/products/my-products`,
+//     { withCredentials: true },
+//   );
+//   return { data: response.data.data.map(mapRawProduct) };
+// };
+
+export const uploadProductImage = async (
+  id: string,
+  file: File,
+  isPrimary: boolean,
+  onProgress?: (pct: number) => void,
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("isPrimary", String(isPrimary));
+
+  const response = await axios.post(
+    `${API_URL}/api/products/${id}/images`,
+    formData,
+    {
+      withCredentials: true,
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (evt) => {
+        if (onProgress && evt.total) {
+          onProgress(Math.round((evt.loaded * 100) / evt.total));
+        }
+      },
+    },
+  );
   return response.data;
 };
 
-export const deleteProduct = async (id: string) => {
-  const response = await axios.delete(`${API_URL}/api/products/${id}`, {
-    withCredentials: true,
-  });
+export const deleteProductImage = async (id: string, imageId: string) => {
+  const response = await axios.delete(
+    `${API_URL}/api/products/${id}/images/${imageId}`,
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const publishProduct = async (id: string, data: MediaDetailsPayload) => {
+  const response = await axios.post(
+    `${API_URL}/api/products/${id}/publish`,
+    data,
+    { withCredentials: true },
+  );
   return response.data;
 };

@@ -1,6 +1,3 @@
-// src/middleware/upload.middleware.ts
-// npm install multer @types/multer
-
 import multer from "multer";
 
 const ALLOWED_MIME = [
