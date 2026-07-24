@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -7,12 +7,45 @@ export class MessageService {
   async getMessages(conversationId: string) {
     return prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
       include: {
         sender: { select: { id: true, name: true, email: true, role: true } },
         receiver: { select: { id: true, name: true, email: true, role: true } },
       },
     });
+  }
+
+  async getMessagesPaginated(
+    conversationId: string,
+    cursor?: string,
+    limit = 20,
+  ) {
+    const messages = await prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "desc" },
+      take: limit + 1, // fetch one extra to know if there's more
+      ...(cursor
+        ? {
+            cursor: { id: cursor },
+            skip: 1, // skip the cursor message itself
+          }
+        : {}),
+      include: {
+        sender: { select: { id: true, name: true, email: true, role: true } },
+        receiver: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
+
+    const hasMore = messages.length > limit;
+    const page = hasMore ? messages.slice(0, limit) : messages;
+
+    return {
+      // reverse so this page is oldest -> newest, ready to render
+      messages: page.reverse(),
+      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+    };
   }
 
   // Create a regular user message

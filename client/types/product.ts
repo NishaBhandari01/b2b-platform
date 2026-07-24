@@ -7,8 +7,49 @@ export type ApiProductStatus =
 export type PriceType = "fixed" | "range" | "quote";
 
 export interface ProductImage {
+  id: string;
+
   url: string;
+
   isPrimary: boolean;
+
+  displayOrder: number;
+}
+
+export interface Product {
+  id: string;
+
+  name: string;
+
+  category: string;
+
+  brand: string | null;
+
+  modelNumber: string | null;
+
+  sku: string;
+
+  shortDescription: string;
+
+  description: string;
+
+  currency: string;
+
+  priceType: "fixed" | "range";
+
+  price: string;
+
+  minPrice: string;
+
+  maxPrice: string;
+
+  unit: string;
+
+  minOrderQty: number;
+
+  availableQuantity: number;
+
+  images: ProductImage[];
 }
 
 export interface RawProduct {

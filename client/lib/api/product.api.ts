@@ -1,11 +1,9 @@
 // import axios from "axios";
 import type { RawProductsResponse } from "@/types/product";
 import { mapRawProduct } from "@/lib/mappers/product.mapper";
-
 import axios from "axios";
-
+import { ProductDetail } from "@/types/product-detail";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
 export type PriceType = "fixed" | "range" | "rfq";
 export type ProductStatus = "draft" | "active" | "out_of_stock" | "archived";
 
@@ -60,12 +58,12 @@ export interface BasicInfoPayload {
   sku?: string;
   shortDescription?: string;
   description: string;
-  priceType: PriceType;
-  currency: string;
+  // priceType: PriceType;
+  // currency: string;
   price?: number;
   minPrice?: number;
   maxPrice?: number;
-  unit: string;
+  // unit: string;
   minOrderQty?: number;
   moqUnit?: string;
   availableQuantity?: number;
@@ -88,15 +86,15 @@ export const createProductDraft = async (data: BasicInfoPayload) => {
   return response.data;
 };
 
-export const updateProductBasicInfo = async (
-  id: string,
-  data: BasicInfoPayload,
-) => {
-  const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+// export const updateProductBasicInfo = async (
+//   id: string,
+//   data: BasicInfoPayload,
+// ) => {
+//   const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
+//     withCredentials: true,
+//   });
+//   return response.data;
+// };
 
 // export const getMyProducts = async (id: string) => {
 //   const response = await axios.get(`${API_URL}/api/products/${id}`, {
@@ -117,15 +115,26 @@ export const getMyProducts = async (): Promise<{ data: Product[] }> => {
   };
 };
 
-export const getProductById = async (id: string): Promise<Product> => {
-  const response = await axios.get<{ success: boolean; data: any }>(
-    `${API_URL}/api/products/${id}`,
-    {
-      withCredentials: true,
-    },
-  );
+// export const getProductById = async (id: string): Promise<Product> => {
+//   const response = await axios.get<{ success: boolean; data: any }>(
+//     `${API_URL}/api/products/${id}`,
+//     {
+//       withCredentials: true,
+//     },
+//   );
 
-  return mapRawProduct(response.data.data);
+//   return mapRawProduct(response.data.data);
+// };
+
+export const getProductById = async (id: string): Promise<ProductDetail> => {
+  const response = await axios.get<{
+    success: boolean;
+    data: ProductDetail;
+  }>(`${API_URL}/api/products/${id}`, {
+    withCredentials: true,
+  });
+
+  return response.data.data;
 };
 
 // export const getMyProducts = async (): Promise<{ data: Product[] }> => {
@@ -176,5 +185,16 @@ export const publishProduct = async (id: string, data: MediaDetailsPayload) => {
     data,
     { withCredentials: true },
   );
+  return response.data;
+};
+
+export const updateProductBasicInfo = async (
+  id: string,
+  data: BasicInfoPayload,
+) => {
+  const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
+    withCredentials: true,
+  });
+
   return response.data;
 };

@@ -1,5 +1,11 @@
 import React from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Badge } from "@/components/shared/Badge";
 import { Button } from "@/components/ui/button";
 import { Check, X } from "lucide-react";
@@ -68,7 +74,10 @@ export function QuotationCard({ quotation, rfqId, onOpenChat }: Props) {
 
   const openChat = async () => {
     // Ensure a conversation exists, create if needed via API
-    const conv = await api<any>("GET", `/api/conversations/${rfqId}/${quotation.supplier.id}`);
+    const conv = await api<any>(
+      "GET",
+      `/api/conversations/${rfqId}/${quotation.supplier.id}`,
+    );
     onOpenChat(conv.id);
   };
 
@@ -98,18 +107,29 @@ export function QuotationCard({ quotation, rfqId, onOpenChat }: Props) {
             quotation.status === "accepted"
               ? "success"
               : quotation.status === "rejected"
-              ? "danger"
-              : "secondary"
+                ? "danger"
+                : "secondary"
           }
         >
           {quotation.status}
         </Badge>
         {quotation.status === "pending" && (
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleAccept} disabled={acceptMutation.isLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button
+              size="sm"
+              onClick={handleAccept}
+              disabled={acceptMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
               <Check className="w-4 h-4" /> Accept
             </Button>
-            <Button size="sm" variant="outline" onClick={handleReject} disabled={rejectMutation.isLoading} className="border-red-600 text-red-600 hover:bg-red-100">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleReject}
+              disabled={rejectMutation.isPending}
+              className="border-red-600 text-red-600 hover:bg-red-100"
+            >
               <X className="w-4 h-4" /> Reject
             </Button>
           </div>

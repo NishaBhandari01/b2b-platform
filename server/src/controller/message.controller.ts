@@ -2,20 +2,23 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { MessageService } from "../services/message.service.js";
 import { ConversationService } from "../services/conversation.service.js";
+import { success } from "zod";
 
 const messageService = new MessageService();
 const conversationService = new ConversationService();
 
-// GET /api/messages/:conversationId
-// Returns all messages for a conversation ordered by createdAt
-export const getMessages = async (
-  req: Request<{ conversationId: string }>,
-  res: Response,
-) => {
+export const getMessages = async (req: AuthRequest, res: Response) => {
   try {
-    const { conversationId } = req.params;
-    const messages = await messageService.getMessages(conversationId);
-    res.json({ success: true, data: messages });
+    const conversationId = req.params.conversationId as string;
+    const { cursor, limit } = req.query;
+
+    const result = await messageService.getMessagesPaginated(
+      conversationId,
+      cursor as string | undefined,
+      limit ? parseInt(limit as string, 10) : 20,
+    );
+
+    res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, message: (err as Error).message });
   }
@@ -29,9 +32,6 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
     const senderId = req.user!.id;
     const senderRole = req.user!.role;
 
-    // The conversation is keyed to the quotation (rfqId + supplierId).
-    // The buyer always opens the chat; the supplier's id is passed explicitly.
-    // If the supplier is sending, supplierId === senderId.
     const actualSupplierId = senderRole === "supplier" ? senderId : supplierId;
 
     if (!actualSupplierId) {
