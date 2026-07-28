@@ -113,11 +113,55 @@ export function MediaDetailsStep({
     <div className="space-y-6">
       {/* Images */}
       <Card className="p-6">
-        <h2 className="font-semibold">Product images</h2>
+        <h2 className="font-semibold">Primary Image</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Add at least one image. The starred image is what buyers see first.
         </p>
 
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            handleFiles(e.dataTransfer.files);
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+            isDragging
+              ? "border-emerald-400 bg-emerald-50"
+              : "border-slate-200 hover:border-emerald-300 hover:bg-slate-50"
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              handleFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <div className="rounded-full bg-emerald-50 p-3">
+            <ImagePlus className="h-5 w-5 text-emerald-600" />
+          </div>
+          <p className="mt-3 text-sm font-medium text-slate-700">
+            Drag images here, or click to browse
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            PNG, JPG, or WEBP · up to 10MB each
+          </p>
+        </div>
+        <h2 className="font-semibold">Secondary Images</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Upload the images from various angles to show it clearly to buyer.
+          (Optional)
+        </p>
         <div
           onDragOver={(e) => {
             e.preventDefault();

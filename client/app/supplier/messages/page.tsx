@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { MessageSquare, Clock } from "lucide-react";
+import { MessageSquare, Search, Paperclip, Send } from "lucide-react";
 import RFQChat from "@/components/RFQChat";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -17,7 +16,13 @@ interface ConversationItem {
     rfq: {
       id: string;
       title: string;
-      user: { id: string; name: string; email: string };
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        isOnline: boolean;
+        lastSeen: string | null;
+      };
     };
     supplier: { id: string; name: string; email: string };
   };
@@ -35,11 +40,41 @@ interface CurrentUser {
   name: string;
 }
 
+function formatRelativeTime(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+const AVATAR_COLORS = [
+  "bg-orange-100 text-orange-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-sky-100 text-sky-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-violet-100 text-violet-700",
+];
+
+function getAvatarColor(name: string) {
+  const index = name.charCodeAt(0) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
 export default function SupplierMessages() {
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [search, setSearch] = useState("");
 
-  // Fetch current user info from auth cookie
   useEffect(() => {
     fetch(`${API_URL}/api/auth/me`, { credentials: "include" })
       .then((r) => r.json())
@@ -49,25 +84,16 @@ export default function SupplierMessages() {
       .catch(() => {});
   }, []);
 
-  // Fetch all conversations for this supplier
   const { data: conversations = [] } = useQuery<ConversationItem[]>({
     queryKey: ["conversations"],
     queryFn: async () => {
-      console.log("🔥 GET /conversations");
-
       const res = await fetch(`${API_URL}/api/conversations`, {
         credentials: "include",
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to load");
-      }
-
+      if (!res.ok) throw new Error(data?.message || "Failed to load");
       return data.data;
     },
-
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,
@@ -75,128 +101,147 @@ export default function SupplierMessages() {
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 
-  const sortedConversations = [...conversations].sort((a, b) => {
-    const aTime = a.messages[0]
-      ? new Date(a.messages[0].createdAt).getTime()
-      : 0;
-
-    const bTime = b.messages[0]
-      ? new Date(b.messages[0].createdAt).getTime()
-      : 0;
-
-    return bTime - aTime;
-  });
-
-  const totalUnread = conversations.reduce(
-    (sum, c) => sum + (c.unreadCount || 0),
-    0,
-  );
+  const sortedConversations = [...conversations]
+    .sort((a, b) => {
+      const aTime = a.messages[0]
+        ? new Date(a.messages[0].createdAt).getTime()
+        : 0;
+      const bTime = b.messages[0]
+        ? new Date(b.messages[0].createdAt).getTime()
+        : 0;
+      return bTime - aTime;
+    })
+    .filter((c) => {
+      if (!search.trim()) return true;
+      const name = c.quotation.rfq.user.name.toLowerCase();
+      const title = c.quotation.rfq.title.toLowerCase();
+      const q = search.toLowerCase();
+      return name.includes(q) || title.includes(q);
+    });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          Messages
-          {totalUnread > 0 && (
-            <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold text-white bg-red-500 rounded-full">
-              {totalUnread > 99 ? "99+" : totalUnread}
-            </span>
+    <div className="h-[calc(100vh-6rem)] min-h-[560px] rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex">
+      {/* ========== LEFT: Conversation list ========== */}
+      <div className="w-full max-w-[340px] shrink-0 border-r border-slate-100 flex flex-col bg-white">
+        {/* Search */}
+        <div className="p-4 border-b border-slate-100">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search chats..."
+              className="w-full h-10 rounded-full border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-100"
+            />
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto">
+          {sortedConversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
+              <MessageSquare className="h-10 w-10 text-slate-300 mb-3" />
+              <p className="text-sm font-medium text-slate-500">
+                No conversations yet
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Buyers will message you after reviewing your quotations.
+              </p>
+            </div>
+          ) : (
+            sortedConversations.map((conv) => {
+              const buyer = conv.quotation.rfq.user;
+              const lastMsg = conv.messages[0];
+              const isActive = selectedConvId === conv.id;
+              const initials = buyer.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase();
+
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => setSelectedConvId(conv.id)}
+                  className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors border-b border-slate-50 last:border-0 ${
+                    isActive ? "bg-slate-50" : "hover:bg-slate-50/70"
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div
+                    className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${getAvatarColor(
+                      buyer.name,
+                    )}`}
+                  >
+                    {initials}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p
+                        className={`text-[13px] truncate ${
+                          conv.unreadCount > 0
+                            ? "font-semibold text-slate-900"
+                            : "font-medium text-slate-800"
+                        }`}
+                      >
+                        {buyer.name}
+                      </p>
+                      <span className="text-[11px] text-slate-400 shrink-0">
+                        {lastMsg ? formatRelativeTime(lastMsg.createdAt) : ""}
+                      </span>
+                    </div>
+
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p className="text-[12px] text-slate-500 truncate">
+                        {lastMsg ? lastMsg.text : conv.quotation.rfq.title}
+                      </p>
+                      {conv.unreadCount > 0 && (
+                        <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-orange-500 rounded-full shrink-0">
+                          {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
           )}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Keep buyer conversations moving with prompt replies.
-        </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6" style={{ height: "540px" }}>
-        {/* Conversation list */}
-        <Card className="col-span-1 p-0 overflow-hidden flex flex-col">
-          <div className="p-4 border-b bg-slate-50">
-            <h2 className="font-semibold text-slate-900">Conversations</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto divide-y">
-            {sortedConversations.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                No conversations yet.
-                <br />
-                Buyers will message you after reviewing your quotations.
-              </div>
-            ) : (
-              sortedConversations.map((conv) => {
-                const buyer = conv.quotation.rfq.user;
-                const lastMsg = conv.messages[0];
-                const isActive = selectedConvId === conv.id;
-                return (
-                  <button
-                    key={conv.id}
-                    onClick={() => setSelectedConvId(conv.id)}
-                    className={`w-full text-left p-4 hover:bg-slate-50 transition-colors ${
-                      isActive
-                        ? "bg-emerald-50 border-l-4 border-l-emerald-600"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                        {buyer.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p
-                            className={`text-sm truncate ${
-                              conv.unreadCount > 0
-                                ? "font-bold text-slate-900"
-                                : "font-medium text-slate-700"
-                            }`}
-                          >
-                            {buyer.name}
-                          </p>
-                          {conv.unreadCount > 0 && (
-                            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-bold text-white bg-red-500 rounded-full shrink-0">
-                              {conv.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 truncate">
-                          {conv.quotation.rfq.title}
-                        </p>
-                        {lastMsg && (
-                          <p className="text-xs text-slate-400 truncate mt-0.5">
-                            {lastMsg.sender?.name}: {lastMsg.text}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </Card>
-
-        {/* Chat area */}
-        <div className="col-span-2">
-          {selectedConv && currentUser ? (
+      {/* ========== RIGHT: Chat area ========== */}
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
+        {selectedConv && currentUser ? (
+          <div className="flex-1 min-h-0">
             <RFQChat
               conversationId={selectedConv.id}
               currentUserId={currentUser.id}
               currentUserRole="supplier"
               rfqId={selectedConv.quotation.rfqId}
               supplierId={selectedConv.quotation.supplierId}
+              otherPartyId={selectedConv.quotation.rfq.user.id}
               otherPartyName={selectedConv.quotation.rfq.user.name}
+              otherPartyOnline={selectedConv.quotation.rfq.user.isOnline}
+              otherPartyLastSeen={selectedConv.quotation.rfq.user.lastSeen}
             />
-          ) : (
-            <Card className="p-8 flex items-center justify-center h-full">
-              <div className="text-center">
-                <Clock className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600 font-medium">
-                  Select a conversation to start messaging
-                </p>
-              </div>
-            </Card>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50/50">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+              <MessageSquare className="h-8 w-8 text-slate-400" />
+            </div>
+            <p className="text-sm font-medium text-slate-600">
+              Select a conversation
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Choose a chat from the left to start messaging
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

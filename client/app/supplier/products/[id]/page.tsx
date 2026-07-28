@@ -1,9 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { getProductById } from "@/lib/api/product.api";
+import { getProductById, deleteProduct } from "@/lib/api/product.api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,20 @@ import {
   ListChecks,
   PackageSearch,
   ImageOff,
+  Trash2,
 } from "lucide-react";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -37,6 +50,17 @@ export default function ProductDetailsPage() {
   const router = useRouter();
   const { id } = useParams();
   const [activeImage, setActiveImage] = useState(0);
+
+  const queryClient = useQueryClient();
+  const deleteMutation = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+      });
+      router.push("/supplier/products");
+    },
+  });
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -95,10 +119,11 @@ export default function ProductDetailsPage() {
             <ArrowLeft size={16} />
             Back to products
           </Button>
-          <div className="flex gap-3">
+          <div className="flex gap-3 h-10">
             <Button
               variant="outline"
-              className="gap-2 border-slate-300"
+              size="default"
+              className="h-10.5 min-w-37.5 gap-2 border-slate-300 px-4 text-sm font-medium"
               onClick={() =>
                 router.push(`/supplier/products/${product.id}/edit`)
               }
@@ -106,10 +131,37 @@ export default function ProductDetailsPage() {
               <Pencil size={16} />
               Edit Product
             </Button>
-            <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-              <Upload size={16} />
-              Publish
-            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700">
+                <Trash2 size={16} />
+                Delete Product
+              </AlertDialogTrigger>
+
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Are you sure you want to delete this product?
+                  </AlertDialogTitle>
+
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently remove
+                    the product from your catalog.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+
+                  <AlertDialogAction
+                    onClick={() => deleteMutation.mutate(id as string)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

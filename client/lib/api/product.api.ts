@@ -86,22 +86,6 @@ export const createProductDraft = async (data: BasicInfoPayload) => {
   return response.data;
 };
 
-// export const updateProductBasicInfo = async (
-//   id: string,
-//   data: BasicInfoPayload,
-// ) => {
-//   const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
-//     withCredentials: true,
-//   });
-//   return response.data;
-// };
-
-// export const getMyProducts = async (id: string) => {
-//   const response = await axios.get(`${API_URL}/api/products/${id}`, {
-//     withCredentials: true,
-//   });
-//   return response.data;
-// };
 export const getMyProducts = async (): Promise<{ data: Product[] }> => {
   const response = await axios.get<RawProductsResponse>(
     `${API_URL}/api/products/my-products`,
@@ -115,17 +99,6 @@ export const getMyProducts = async (): Promise<{ data: Product[] }> => {
   };
 };
 
-// export const getProductById = async (id: string): Promise<Product> => {
-//   const response = await axios.get<{ success: boolean; data: any }>(
-//     `${API_URL}/api/products/${id}`,
-//     {
-//       withCredentials: true,
-//     },
-//   );
-
-//   return mapRawProduct(response.data.data);
-// };
-
 export const getProductById = async (id: string): Promise<ProductDetail> => {
   const response = await axios.get<{
     success: boolean;
@@ -136,14 +109,6 @@ export const getProductById = async (id: string): Promise<ProductDetail> => {
 
   return response.data.data;
 };
-
-// export const getMyProducts = async (): Promise<{ data: Product[] }> => {
-//   const response = await axios.get<RawProductsResponse>(
-//     `${API_URL}/api/products/my-products`,
-//     { withCredentials: true },
-//   );
-//   return { data: response.data.data.map(mapRawProduct) };
-// };
 
 export const uploadProductImage = async (
   id: string,
@@ -193,6 +158,14 @@ export const updateProductBasicInfo = async (
   data: BasicInfoPayload,
 ) => {
   const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
+    withCredentials: true,
+  });
+
+  return response.data;
+};
+
+export const deleteProduct = async (productId: string) => {
+  const response = await axios.delete(`${API_URL}/api/products/${productId}`, {
     withCredentials: true,
   });
 

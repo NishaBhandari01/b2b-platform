@@ -167,6 +167,19 @@ class ProductService {
 
     return productRepository.deleteImage(imageId);
   }
+
+  async deleteProduct(productId: string, supplierId: string) {
+    const product = await productRepository.deleteProduct(
+      productId,
+      supplierId,
+    );
+
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    return product;
+  }
 }
 
 export default new ProductService();

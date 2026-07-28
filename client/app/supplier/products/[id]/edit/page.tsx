@@ -138,14 +138,16 @@ export default function EditProductPage() {
               </span>
             )}
             <AlertDialog>
-              <AlertDialogTrigger>
-                <Button
-                  disabled={mutation.isPending || !dirty}
-                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  <Save size={16} />
-                  {mutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    disabled={mutation.isPending || !dirty}
+                    className="gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                  />
+                }
+              >
+                <Save size={16} />
+                {mutation.isPending ? "Saving..." : "Save Changes"}
               </AlertDialogTrigger>
 
               <AlertDialogContent>

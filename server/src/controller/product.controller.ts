@@ -160,6 +160,25 @@ class ProductController {
       });
     }
   }
+
+  async deleteProduct(req: AuthRequest, res: Response) {
+    try {
+      const supplierId = req.user!.id;
+      const id = req.params.id as string;
+
+      await productService.deleteProduct(id, supplierId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Product deleted successfully",
+      });
+    } catch (error: any) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 }
 
 export default new ProductController();

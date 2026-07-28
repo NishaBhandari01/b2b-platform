@@ -129,83 +129,6 @@ export class AuthService {
     return createSessionPayload(user);
   }
 
-  // async forgotPassword(email: string) {
-  //   const user = await authRepository.findUserByEmail(email);
-
-  //   /**
-  //    * Never reveal whether an email exists.
-  //    * This prevents email enumeration attacks.
-  //    */
-  //   if (!user) {
-  //     return {
-  //       message:
-  //         "If an account with that email exists, a password reset link has been sent.",
-  //     };
-  //   }
-
-  //   const { token, hashedToken } = generateResetToken();
-
-  //   const expires = new Date(Date.now() + 15 * 60 * 1000);
-
-  //   await authRepository.saveResetToken(user.id, hashedToken, expires);
-
-  //   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-  //   await sendEmail(
-  //     user.email,
-  //     "Reset Your Password",
-  //     resetPasswordEmail(user.name, resetLink),
-  //   );
-
-  //   return {
-  //     message:
-  //       "If an account with that email exists, a password reset link has been sent.",
-  //   };
-  // }
-
-  // async forgotPassword(email: string) {
-  //   console.log("Forgot password requested for:", email);
-
-  //   const user = await authRepository.findUserByEmail(email);
-
-  //   console.log("User found:", user);
-
-  //   if (!user) {
-  //     return {
-  //       message:
-  //         "If an account with that email exists, a password reset link has been sent.",
-  //     };
-  //   }
-
-  //   const { token, hashedToken } = generateResetToken();
-
-  //   console.log("Generated Token:", token);
-  //   console.log("Generated Hash:", hashedToken);
-
-  //   const expires = new Date(Date.now() + 15 * 60 * 1000);
-
-  //   await authRepository.saveResetToken(user.id, hashedToken, expires);
-
-  //   console.log("✅ Reset token saved");
-
-  //   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-  //   console.log("Reset Link:", resetLink);
-
-  //   await sendEmail(
-  //     user.email,
-  //     "Reset Your Password",
-  //     resetPasswordEmail(user.name, resetLink),
-  //   );
-
-  //   console.log("✅ Email sent");
-
-  //   return {
-  //     message:
-  //       "If an account with that email exists, a password reset link has been sent.",
-  //   };
-  // }
-
   async forgotPassword(email: string) {
     console.log("========== FORGOT PASSWORD ==========");
     email = email.trim().toLowerCase();
@@ -274,6 +197,33 @@ export class AuthService {
       message: "Password reset successfully.",
     };
   }
+
+  createSessionPayload = (user: {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    createdAt: Date;
+  }) => {
+    console.log("SIGN SECRET:", getAccessSecret());
+
+    return {
+      accessToken: jwt.sign(createTokenPayload(user), getAccessSecret(), {
+        expiresIn: "15m",
+      }),
+      refreshToken: jwt.sign(createTokenPayload(user), getRefreshSecret(), {
+        expiresIn: "7d",
+      }),
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        verified: false,
+        createdAt: user.createdAt,
+      },
+    };
+  };
 }
 
 export const authService = new AuthService();

@@ -319,7 +319,6 @@ export default function CompanyProfilePage() {
                     <div className="flex items-center gap-2">
                       {doc.url && (
                         <Button
-                          asChild
                           variant="ghost"
                           size="sm"
                           className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"

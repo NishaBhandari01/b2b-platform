@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { MessageService } from "../services/message.service.js";
 import { ConversationService } from "../services/conversation.service.js";
-import { success } from "zod";
 
 const messageService = new MessageService();
 const conversationService = new ConversationService();

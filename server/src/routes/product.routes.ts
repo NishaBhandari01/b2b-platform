@@ -1,59 +1,3 @@
-// import { Router } from "express";
-
-// import productController from "../controller/product.controller.js";
-// import { authenticate } from "../middleware/auth.middleware.js";
-// import { upload } from "../middleware/upload.middleware.js";
-
-// const router = Router();
-
-// // Create product draft
-// router.post(
-//   "/",
-//   authenticate,
-//   productController.create.bind(productController),
-// );
-
-// // Get supplier products
-// router.get(
-//   "/my-products",
-//   authenticate,
-//   productController.myProducts.bind(productController),
-// );
-
-// // Get single product
-// router.get("/:id", authenticate, productController.get.bind(productController));
-
-// // Update basic info
-// router.patch(
-//   "/:id",
-//   authenticate,
-//   productController.update.bind(productController),
-// );
-
-// // Upload image
-// router.post(
-//   "/:id/images",
-//   authenticate,
-//   upload.single("file"),
-//   productController.uploadImage.bind(productController),
-// );
-
-// // Delete image
-// router.delete(
-//   "/:id/images/:imageId",
-//   authenticate,
-//   productController.deleteImage.bind(productController),
-// );
-
-// // Publish product
-// router.post(
-//   "/:id/publish",
-//   authenticate,
-//   productController.publish.bind(productController),
-// );
-
-// export default router;
-
 import { Router } from "express";
 
 import productController from "../controller/product.controller.js";
@@ -261,6 +205,44 @@ router.post(
   "/:id/publish",
   authenticate,
   productController.publish.bind(productController),
+);
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   delete:
+ *     summary: Delete product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Product not found
+ */
+router.delete(
+  "/:id",
+  authenticate,
+  productController.deleteProduct.bind(productController),
 );
 
 export default router;

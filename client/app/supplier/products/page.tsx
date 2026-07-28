@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ElementType, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getMyProducts } from "../../../lib/api/product.api";
+import { getMyProducts, deleteProduct } from "../../../lib/api/product.api";
 import type { Product, ProductStatus } from "@/types/product";
 import {
   Plus,
@@ -975,3 +975,900 @@ export default function SupplierProductsPage() {
     </div>
   );
 }
+
+// "use client";
+
+// import { useMemo, useState, type ElementType, type ReactNode } from "react";
+// import { useQuery } from "@tanstack/react-query";
+// import { getMyProducts, deleteProduct } from "../../../lib/api/product.api";
+// import type { Product, ProductStatus } from "@/types/product";
+// import {
+//   Plus,
+//   Search,
+//   ChevronDown,
+//   Grid3x3,
+//   List,
+//   Download,
+//   CheckSquare,
+//   Star,
+//   Eye,
+//   MessageSquare,
+//   MousePointerClick,
+//   MapPin,
+//   Clock,
+//   Pencil,
+//   Copy,
+//   Share2,
+//   Trash2,
+//   ChevronLeft,
+//   ChevronRight,
+//   AlertTriangle,
+//   ShieldCheck,
+//   Award,
+//   ArrowUpRight,
+//   Layers,
+//   PackageSearch,
+//   Flame,
+//   BadgeCheck,
+//   Globe2,
+//   FileCheck2,
+//   Boxes,
+//   RefreshCw,
+//   Filter,
+//   X,
+// } from "lucide-react";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { useRouter } from "next/navigation";
+
+// const CATEGORIES = [
+//   "All Categories",
+//   "Steel & Metal",
+//   "Industrial Components",
+//   "Electrical Equipment",
+//   "Fasteners",
+// ];
+
+// const STATUSES: ("All Statuses" | ProductStatus)[] = [
+//   "All Statuses",
+//   "Active",
+//   "Draft",
+//   "Pending Approval",
+//   "Out of Stock",
+// ];
+
+// const SORT_OPTIONS = [
+//   "Recently Updated",
+//   "Most Viewed",
+//   "Most RFQs",
+//   "Price: Low to High",
+//   "Price: High to Low",
+// ];
+
+// /* ------------------------------------------------------------------ */
+// /*  Helpers                                                             */
+// /* ------------------------------------------------------------------ */
+
+// const statusStyles: Record<ProductStatus, string> = {
+//   Active: "bg-emerald-500/10 text-emerald-700",
+//   Draft: "bg-slate-500/10 text-slate-600",
+//   "Pending Approval": "bg-amber-500/10 text-amber-700",
+//   "Out of Stock": "bg-rose-500/10 text-rose-700",
+// };
+
+// const statusDot: Record<ProductStatus, string> = {
+//   Active: "bg-emerald-500",
+//   Draft: "bg-slate-400",
+//   "Pending Approval": "bg-amber-500",
+//   "Out of Stock": "bg-rose-500",
+// };
+
+// function formatNumber(n: number) {
+//   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+//   return n.toString();
+// }
+
+// /* ------------------------------------------------------------------ */
+// /*  Product Card – completely new horizontal design                     */
+// /* ------------------------------------------------------------------ */
+
+// function ProductCard({ product }: { product: Product }) {
+//   const router = useRouter();
+
+//   return (
+//     <div
+//       onClick={() => router.push(`/supplier/products/${product.id}`)}
+//       className="group flex cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5"
+//     >
+//       {/* Image side */}
+//       <div className="relative w-44 shrink-0 overflow-hidden bg-slate-100 sm:w-52">
+//         <img
+//           src={product.image ?? undefined}
+//           alt={product.name}
+//           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+//         />
+//         <div className="absolute left-2.5 top-2.5">
+//           <span
+//             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusStyles[product.status]}`}
+//           >
+//             <span
+//               className={`h-1.5 w-1.5 rounded-full ${statusDot[product.status]}`}
+//             />
+//             {product.status}
+//           </span>
+//         </div>
+//         {product.featuredTag && (
+//           <div className="absolute bottom-2.5 left-2.5">
+//             <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+//               {product.featuredTag === "Best Seller" && (
+//                 <Flame className="h-3 w-3 text-amber-400" />
+//               )}
+//               {product.featuredTag}
+//             </span>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Content side */}
+//       <div className="flex flex-1 flex-col justify-between p-4">
+//         <div>
+//           <div className="flex items-start justify-between gap-3">
+//             <div className="min-w-0">
+//               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
+//                 {product.category}
+//               </p>
+//               <h3 className="mt-0.5 truncate text-[15px] font-semibold text-slate-900">
+//                 {product.name}
+//               </h3>
+//               <p className="mt-1 line-clamp-1 text-[13px] text-slate-500">
+//                 {product.description}
+//               </p>
+//             </div>
+//             <div className="flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[12px] font-semibold text-amber-700">
+//               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+//               {product.rating}
+//             </div>
+//           </div>
+
+//           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-500">
+//             <span className="font-medium text-slate-800">{product.price}</span>
+//             <span>MOQ {product.moq}</span>
+//             <span className="flex items-center gap-1">
+//               <MapPin className="h-3 w-3" />
+//               {product.location}
+//             </span>
+//             <span>SKU {product.sku}</span>
+//           </div>
+//         </div>
+
+//         <div className="mt-4 flex items-center justify-between">
+//           <div className="flex items-center gap-4 text-[12px] text-slate-500">
+//             <span className="flex items-center gap-1">
+//               <Eye className="h-3.5 w-3.5" /> {formatNumber(product.views)}
+//             </span>
+//             <span className="flex items-center gap-1">
+//               <FileCheck2 className="h-3.5 w-3.5" /> {product.rfqs}
+//             </span>
+//             <span className="flex items-center gap-1">
+//               <MousePointerClick className="h-3.5 w-3.5" />{" "}
+//               {formatNumber(product.clicks)}
+//             </span>
+//             <span className="font-medium text-emerald-600">
+//               {product.conversion}%
+//             </span>
+//           </div>
+
+//           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+//             <Button
+//               size="icon"
+//               variant="ghost"
+//               className="h-8 w-8 text-slate-500 hover:text-emerald-700"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <Pencil className="h-3.5 w-3.5" />
+//             </Button>
+//             <Button
+//               size="icon"
+//               variant="ghost"
+//               className="h-8 w-8 text-slate-500 hover:text-sky-700"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <Copy className="h-3.5 w-3.5" />
+//             </Button>
+//             <Button
+//               size="icon"
+//               variant="ghost"
+//               className="h-8 w-8 text-slate-500 hover:text-rose-600"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <Trash2 className="h-3.5 w-3.5" />
+//             </Button>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+// /* ------------------------------------------------------------------ */
+// /*  Compact list row                                                    */
+// /* ------------------------------------------------------------------ */
+
+// function ProductRow({ product }: { product: Product }) {
+//   return (
+//     <div className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-all hover:border-emerald-200 hover:shadow-md">
+//       <img
+//         src={product.image ?? undefined}
+//         alt={product.name}
+//         className="h-14 w-18 shrink-0 rounded-lg object-cover"
+//       />
+//       <div className="min-w-0 flex-1">
+//         <div className="flex items-center gap-2">
+//           <h4 className="truncate text-sm font-semibold text-slate-900">
+//             {product.name}
+//           </h4>
+//           <span
+//             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusStyles[product.status]}`}
+//           >
+//             {product.status}
+//           </span>
+//         </div>
+//         <p className="mt-0.5 truncate text-xs text-slate-500">
+//           {product.category} · {product.sku} · {product.location}
+//         </p>
+//       </div>
+//       <div className="hidden text-right sm:block">
+//         <p className="text-sm font-bold text-slate-900">{product.price}</p>
+//         <p className="text-xs text-slate-400">MOQ {product.moq}</p>
+//       </div>
+//       <div className="hidden items-center gap-5 text-xs text-slate-500 lg:flex">
+//         <span className="flex items-center gap-1">
+//           <Eye className="h-3.5 w-3.5" />
+//           {formatNumber(product.views)}
+//         </span>
+//         <span className="flex items-center gap-1">
+//           <FileCheck2 className="h-3.5 w-3.5" />
+//           {product.rfqs}
+//         </span>
+//         <span className="flex items-center gap-1">
+//           <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+//           {product.rating}
+//         </span>
+//       </div>
+//       <div className="flex gap-1">
+//         <Button
+//           size="icon"
+//           variant="ghost"
+//           className="h-8 w-8 text-slate-400 hover:text-emerald-700"
+//         >
+//           <Pencil className="h-3.5 w-3.5" />
+//         </Button>
+//         <Button
+//           size="icon"
+//           variant="ghost"
+//           className="h-8 w-8 text-slate-400 hover:text-sky-700"
+//         >
+//           <Copy className="h-3.5 w-3.5" />
+//         </Button>
+//         <Button
+//           size="icon"
+//           variant="ghost"
+//           className="h-8 w-8 text-slate-400 hover:text-rose-600"
+//         >
+//           <Trash2 className="h-3.5 w-3.5" />
+//         </Button>
+//       </div>
+//     </div>
+//   );
+// }
+
+// /* ------------------------------------------------------------------ */
+// /*  Skeletons / Empty / Error                                           */
+// /* ------------------------------------------------------------------ */
+
+// function ProductCardSkeleton() {
+//   return (
+//     <div className="flex animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
+//       <div className="h-40 w-44 shrink-0 bg-slate-100 sm:w-52" />
+//       <div className="flex flex-1 flex-col justify-between p-4">
+//         <div className="space-y-2">
+//           <div className="h-3 w-20 rounded bg-slate-100" />
+//           <div className="h-4 w-2/3 rounded bg-slate-200" />
+//           <div className="h-3 w-full rounded bg-slate-100" />
+//         </div>
+//         <div className="h-4 w-1/2 rounded bg-slate-100" />
+//       </div>
+//     </div>
+//   );
+// }
+
+// function ProductRowSkeleton() {
+//   return (
+//     <div className="flex animate-pulse items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+//       <div className="h-14 w-18 shrink-0 rounded-lg bg-slate-100" />
+//       <div className="flex-1 space-y-2">
+//         <div className="h-4 w-1/3 rounded bg-slate-200" />
+//         <div className="h-3 w-1/2 rounded bg-slate-100" />
+//       </div>
+//     </div>
+//   );
+// }
+
+// function EmptyState() {
+//   const router = useRouter();
+//   return (
+//     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-24 text-center">
+//       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
+//         <PackageSearch className="h-8 w-8 text-emerald-600" />
+//       </div>
+//       <h3 className="text-base font-semibold text-slate-900">
+//         No products yet
+//       </h3>
+//       <p className="mt-1.5 max-w-xs text-sm text-slate-500">
+//         Add your first product to start receiving RFQs from verified buyers.
+//       </p>
+//       <Button
+//         onClick={() => router.push("/supplier/products/add")}
+//         className="mt-5 bg-emerald-600 text-white hover:bg-emerald-700"
+//       >
+//         <Plus className="mr-1.5 h-4 w-4" />
+//         Add Product
+//       </Button>
+//     </div>
+//   );
+// }
+
+// function ErrorState({ onRetry }: { onRetry: () => void }) {
+//   return (
+//     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 py-24 text-center">
+//       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50">
+//         <AlertTriangle className="h-8 w-8 text-rose-500" />
+//       </div>
+//       <h3 className="text-base font-semibold text-slate-900">
+//         Couldn&apos;t load products
+//       </h3>
+//       <p className="mt-1.5 max-w-xs text-sm text-slate-500">
+//         Something went wrong. Check your connection and try again.
+//       </p>
+//       <Button
+//         onClick={onRetry}
+//         variant="outline"
+//         className="mt-5 gap-1.5 border-rose-200 text-rose-600"
+//       >
+//         <RefreshCw className="h-4 w-4" />
+//         Retry
+//       </Button>
+//     </div>
+//   );
+// }
+
+// /* ------------------------------------------------------------------ */
+// /*  Main Page – NEW LAYOUT                                              */
+// /* ------------------------------------------------------------------ */
+
+// export default function SupplierProductsPage() {
+//   const [search, setSearch] = useState("");
+//   const [category, setCategory] = useState("All Categories");
+//   const [status, setStatus] = useState<string>("All Statuses");
+//   const [sort, setSort] = useState(SORT_OPTIONS[0]);
+//   const [view, setView] = useState<"grid" | "list">("grid");
+//   const [page, setPage] = useState(1);
+//   const router = useRouter();
+
+//   const { data, isLoading, isError, refetch, isFetching } = useQuery({
+//     queryKey: ["products"],
+//     queryFn: getMyProducts,
+//     staleTime: 60 * 1000,
+//     refetchOnWindowFocus: true,
+//     retry: 2,
+//   });
+
+//   const products: Product[] = data?.data ?? [];
+
+//   const filtered = useMemo(() => {
+//     let list = products.filter((p) => {
+//       const matchesSearch =
+//         search.trim() === "" ||
+//         p.name.toLowerCase().includes(search.toLowerCase()) ||
+//         p.sku.toLowerCase().includes(search.toLowerCase());
+//       const matchesCategory =
+//         category === "All Categories" || p.category === category;
+//       const matchesStatus = status === "All Statuses" || p.status === status;
+//       return matchesSearch && matchesCategory && matchesStatus;
+//     });
+
+//     switch (sort) {
+//       case "Most Viewed":
+//         list = [...list].sort((a, b) => b.views - a.views);
+//         break;
+//       case "Most RFQs":
+//         list = [...list].sort((a, b) => b.rfqs - a.rfqs);
+//         break;
+//       case "Price: Low to High":
+//         list = [...list].sort(
+//           (a, b) =>
+//             parseFloat(a.price.replace(/[^0-9.]/g, "")) -
+//             parseFloat(b.price.replace(/[^0-9.]/g, "")),
+//         );
+//         break;
+//       case "Price: High to Low":
+//         list = [...list].sort(
+//           (a, b) =>
+//             parseFloat(b.price.replace(/[^0-9.]/g, "")) -
+//             parseFloat(a.price.replace(/[^0-9.]/g, "")),
+//         );
+//         break;
+//       default:
+//         break;
+//     }
+//     return list;
+//   }, [products, search, category, status, sort]);
+
+//   const totalProducts = products.length;
+//   const activeProducts = products.filter((p) => p.status === "Active").length;
+//   const draftProducts = products.filter((p) => p.status === "Draft").length;
+//   const categoryCount = new Set(products.map((p) => p.category)).size;
+//   const featured = products.find((p) => p.featuredTag === "Best Seller");
+
+//   const lowStock = products.filter((p) => p.stock === 0).slice(0, 4);
+//   const pendingApproval = products
+//     .filter((p) => p.status === "Pending Approval")
+//     .slice(0, 4);
+//   const mostViewed = products.length
+//     ? [...products].sort((a, b) => b.views - a.views)[0]
+//     : null;
+
+//   return (
+//     <div className="min-h-screen bg-slate-50">
+//       {/* ========== TOP COMMAND BAR ========== */}
+//       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md">
+//         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+//           <div className="flex items-center gap-6">
+//             <div>
+//               <h1 className="text-lg font-bold text-slate-900">My Products</h1>
+//               <p className="text-xs text-slate-500">
+//                 {isLoading ? "…" : `${totalProducts} products`} ·{" "}
+//                 {activeProducts} active
+//               </p>
+//             </div>
+//           </div>
+
+//           <div className="flex flex-1 max-w-xl items-center gap-2">
+//             <div className="relative flex-1">
+//               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+//               <Input
+//                 value={search}
+//                 onChange={(e) => setSearch(e.target.value)}
+//                 placeholder="Search by name or SKU…"
+//                 className="h-10 rounded-xl border-slate-200 pl-9 text-sm"
+//               />
+//             </div>
+//           </div>
+
+//           <div className="flex items-center gap-2">
+//             <div className="hidden items-center rounded-lg border border-slate-200 p-0.5 sm:flex">
+//               <button
+//                 onClick={() => setView("grid")}
+//                 className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+//                   view === "grid"
+//                     ? "bg-slate-900 text-white"
+//                     : "text-slate-400 hover:text-slate-600"
+//                 }`}
+//               >
+//                 <Grid3x3 className="h-4 w-4" />
+//               </button>
+//               <button
+//                 onClick={() => setView("list")}
+//                 className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+//                   view === "list"
+//                     ? "bg-slate-900 text-white"
+//                     : "text-slate-400 hover:text-slate-600"
+//                 }`}
+//               >
+//                 <List className="h-4 w-4" />
+//               </button>
+//             </div>
+//             <Button
+//               variant="outline"
+//               size="sm"
+//               className="h-9 gap-1.5 rounded-lg border-slate-200"
+//             >
+//               <Download className="h-3.5 w-3.5" />
+//               <span className="hidden sm:inline">Export</span>
+//             </Button>
+//             <Button
+//               onClick={() => router.push("/supplier/products/add")}
+//               className="h-9 gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"
+//             >
+//               <Plus className="h-4 w-4" />
+//               Add Product
+//             </Button>
+//           </div>
+//         </div>
+//       </header>
+
+//       <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+//         {/* ========== SLIM STATS STRIP ========== */}
+//         <div className="mb-6 flex flex-wrap items-center gap-3">
+//           {[
+//             {
+//               label: "Total",
+//               value: totalProducts,
+//               icon: Boxes,
+//               color: "text-slate-700",
+//             },
+//             {
+//               label: "Active",
+//               value: activeProducts,
+//               icon: BadgeCheck,
+//               color: "text-emerald-600",
+//             },
+//             {
+//               label: "Drafts",
+//               value: draftProducts,
+//               icon: PackageSearch,
+//               color: "text-slate-500",
+//             },
+//             {
+//               label: "Categories",
+//               value: categoryCount,
+//               icon: Layers,
+//               color: "text-sky-600",
+//             },
+//           ].map((s) => (
+//             <div
+//               key={s.label}
+//               className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm"
+//             >
+//               <s.icon className={`h-4 w-4 ${s.color}`} />
+//               <div>
+//                 <p className="text-lg font-bold tabular-nums leading-none text-slate-900">
+//                   {isLoading ? "–" : s.value}
+//                 </p>
+//                 <p className="text-[11px] font-medium text-slate-400">
+//                   {s.label}
+//                 </p>
+//               </div>
+//             </div>
+//           ))}
+//           {isFetching && !isLoading && (
+//             <RefreshCw className="ml-2 h-4 w-4 animate-spin text-slate-400" />
+//           )}
+//         </div>
+
+//         {/* ========== THREE-COLUMN LAYOUT ========== */}
+//         <div className="flex gap-6">
+//           {/* LEFT FILTER PANEL */}
+//           <aside className="hidden w-56 shrink-0 lg:block">
+//             <div className="sticky top-24 space-y-6">
+//               <div>
+//                 <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-slate-800">
+//                   <Filter className="h-4 w-4 text-slate-400" />
+//                   Filters
+//                 </div>
+
+//                 <div className="space-y-4">
+//                   <div>
+//                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+//                       Category
+//                     </label>
+//                     <div className="space-y-1">
+//                       {CATEGORIES.map((c) => (
+//                         <button
+//                           key={c}
+//                           onClick={() => setCategory(c)}
+//                           className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
+//                             category === c
+//                               ? "bg-emerald-50 font-medium text-emerald-700"
+//                               : "text-slate-600 hover:bg-slate-100"
+//                           }`}
+//                         >
+//                           {c}
+//                           {category === c && (
+//                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+//                           )}
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+
+//                   <div>
+//                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+//                       Status
+//                     </label>
+//                     <div className="space-y-1">
+//                       {STATUSES.map((s) => (
+//                         <button
+//                           key={s}
+//                           onClick={() => setStatus(s)}
+//                           className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
+//                             status === s
+//                               ? "bg-emerald-50 font-medium text-emerald-700"
+//                               : "text-slate-600 hover:bg-slate-100"
+//                           }`}
+//                         >
+//                           {s}
+//                           {status === s && (
+//                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+//                           )}
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+
+//                   <div>
+//                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+//                       Sort by
+//                     </label>
+//                     <div className="space-y-1">
+//                       {SORT_OPTIONS.map((s) => (
+//                         <button
+//                           key={s}
+//                           onClick={() => setSort(s)}
+//                           className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
+//                             sort === s
+//                               ? "bg-emerald-50 font-medium text-emerald-700"
+//                               : "text-slate-600 hover:bg-slate-100"
+//                           }`}
+//                         >
+//                           {s}
+//                           {sort === s && (
+//                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+//                           )}
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+//           </aside>
+
+//           {/* CENTER – PRODUCTS */}
+//           <main className="min-w-0 flex-1">
+//             {/* Featured banner (if exists) */}
+//             {featured && (
+//               <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 p-5 text-white">
+//                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+//                   <img
+//                     src={featured.image ?? undefined}
+//                     alt={featured.name}
+//                     className="h-20 w-28 shrink-0 rounded-xl object-cover"
+//                   />
+//                   <div className="min-w-0 flex-1">
+//                     <div className="flex items-center gap-2">
+//                       <Flame className="h-4 w-4 text-amber-400" />
+//                       <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+//                         Best Seller
+//                       </span>
+//                     </div>
+//                     <h3 className="mt-1 truncate text-lg font-semibold">
+//                       {featured.name}
+//                     </h3>
+//                     <p className="text-sm text-slate-400">
+//                       {formatNumber(featured.views)} views · {featured.rfqs}{" "}
+//                       RFQs · {featured.conversion}% conv.
+//                     </p>
+//                   </div>
+//                   <Button className="shrink-0 bg-white text-slate-900 hover:bg-slate-100">
+//                     View Insights
+//                   </Button>
+//                 </div>
+//               </div>
+//             )}
+
+//             {/* Mobile filter chips */}
+//             <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+//               <select
+//                 value={category}
+//                 onChange={(e) => setCategory(e.target.value)}
+//                 className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+//               >
+//                 {CATEGORIES.map((c) => (
+//                   <option key={c}>{c}</option>
+//                 ))}
+//               </select>
+//               <select
+//                 value={status}
+//                 onChange={(e) => setStatus(e.target.value)}
+//                 className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+//               >
+//                 {STATUSES.map((s) => (
+//                   <option key={s}>{s}</option>
+//                 ))}
+//               </select>
+//               <select
+//                 value={sort}
+//                 onChange={(e) => setSort(e.target.value)}
+//                 className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+//               >
+//                 {SORT_OPTIONS.map((s) => (
+//                   <option key={s}>{s}</option>
+//                 ))}
+//               </select>
+//             </div>
+
+//             {/* Product list */}
+//             {isError ? (
+//               <ErrorState onRetry={() => refetch()} />
+//             ) : isLoading ? (
+//               <div className="space-y-3">
+//                 {Array.from({ length: 5 }).map((_, i) =>
+//                   view === "grid" ? (
+//                     <ProductCardSkeleton key={i} />
+//                   ) : (
+//                     <ProductRowSkeleton key={i} />
+//                   ),
+//                 )}
+//               </div>
+//             ) : filtered.length === 0 ? (
+//               <EmptyState />
+//             ) : view === "grid" ? (
+//               <div className="space-y-3">
+//                 {filtered.map((p) => (
+//                   <ProductCard key={p.id} product={p} />
+//                 ))}
+//               </div>
+//             ) : (
+//               <div className="space-y-2.5">
+//                 {filtered.map((p) => (
+//                   <ProductRow key={p.id} product={p} />
+//                 ))}
+//               </div>
+//             )}
+
+//             {/* Pagination */}
+//             {!isLoading && !isError && filtered.length > 0 && (
+//               <div className="mt-8 flex items-center justify-center gap-1.5">
+//                 <button
+//                   onClick={() => setPage((p) => Math.max(1, p - 1))}
+//                   disabled={page === 1}
+//                   className="flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+//                 >
+//                   <ChevronLeft className="h-4 w-4" />
+//                   Previous
+//                 </button>
+//                 {[1, 2, 3].map((n) => (
+//                   <button
+//                     key={n}
+//                     onClick={() => setPage(n)}
+//                     className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold ${
+//                       page === n
+//                         ? "bg-slate-900 text-white"
+//                         : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+//                     }`}
+//                   >
+//                     {n}
+//                   </button>
+//                 ))}
+//                 <button
+//                   onClick={() => setPage((p) => Math.min(3, p + 1))}
+//                   disabled={page === 3}
+//                   className="flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+//                 >
+//                   Next
+//                   <ChevronRight className="h-4 w-4" />
+//                 </button>
+//               </div>
+//             )}
+//           </main>
+
+//           {/* RIGHT INSIGHTS RAIL */}
+//           <aside className="hidden w-64 shrink-0 xl:block">
+//             <div className="sticky top-24 space-y-5">
+//               {/* Low stock */}
+//               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+//                 <div className="mb-3 flex items-center gap-2">
+//                   <AlertTriangle className="h-4 w-4 text-rose-500" />
+//                   <h4 className="text-[13px] font-semibold text-slate-800">
+//                     Low Stock
+//                   </h4>
+//                 </div>
+//                 {lowStock.length === 0 ? (
+//                   <p className="text-[13px] text-slate-400">
+//                     All products stocked.
+//                   </p>
+//                 ) : (
+//                   <ul className="space-y-2">
+//                     {lowStock.map((p) => (
+//                       <li
+//                         key={p.id}
+//                         className="flex items-center justify-between rounded-lg bg-rose-50 px-2.5 py-2 text-[13px]"
+//                       >
+//                         <span className="truncate font-medium text-rose-700">
+//                           {p.name}
+//                         </span>
+//                         <span className="text-[11px] font-semibold text-rose-600">
+//                           0
+//                         </span>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 )}
+//               </div>
+
+//               {/* Pending */}
+//               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+//                 <div className="mb-3 flex items-center gap-2">
+//                   <ShieldCheck className="h-4 w-4 text-amber-500" />
+//                   <h4 className="text-[13px] font-semibold text-slate-800">
+//                     Pending Approval
+//                   </h4>
+//                 </div>
+//                 {pendingApproval.length === 0 ? (
+//                   <p className="text-[13px] text-slate-400">Nothing pending.</p>
+//                 ) : (
+//                   <ul className="space-y-2">
+//                     {pendingApproval.map((p) => (
+//                       <li
+//                         key={p.id}
+//                         className="flex items-center justify-between rounded-lg bg-amber-50 px-2.5 py-2 text-[13px]"
+//                       >
+//                         <span className="truncate font-medium text-amber-700">
+//                           {p.name}
+//                         </span>
+//                         <span className="text-[11px] text-amber-600">
+//                           {p.updatedAt}
+//                         </span>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 )}
+//               </div>
+
+//               {/* Most viewed */}
+//               {mostViewed && (
+//                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+//                   <div className="mb-3 flex items-center gap-2">
+//                     <Eye className="h-4 w-4 text-sky-500" />
+//                     <h4 className="text-[13px] font-semibold text-slate-800">
+//                       Most Viewed
+//                     </h4>
+//                   </div>
+//                   <div className="flex items-center gap-3">
+//                     <img
+//                       src={mostViewed.image ?? "/placeholder-product.png"}
+//                       alt={mostViewed.name}
+//                       className="h-12 w-14 rounded-lg object-cover"
+//                     />
+//                     <div className="min-w-0">
+//                       <p className="truncate text-[13px] font-medium text-slate-700">
+//                         {mostViewed.name}
+//                       </p>
+//                       <p className="text-[12px] text-slate-400">
+//                         {formatNumber(mostViewed.views)} views
+//                       </p>
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {/* Tips */}
+//               <div className="rounded-2xl border border-emerald-100 bg-gradient-to-b from-emerald-50 to-white p-4">
+//                 <div className="mb-3 flex items-center gap-2">
+//                   <Globe2 className="h-4 w-4 text-emerald-600" />
+//                   <h4 className="text-[13px] font-semibold text-slate-800">
+//                     Visibility Tips
+//                   </h4>
+//                 </div>
+//                 <ul className="space-y-2 text-[13px] text-slate-600">
+//                   {[
+//                     "Upload high-quality images",
+//                     "Add detailed specs",
+//                     "Keep prices current",
+//                     "Add certifications",
+//                   ].map((tip) => (
+//                     <li key={tip} className="flex items-start gap-2">
+//                       <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+//                       {tip}
+//                     </li>
+//                   ))}
+//                 </ul>
+//               </div>
+//             </div>
+//           </aside>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }

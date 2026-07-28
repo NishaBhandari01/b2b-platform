@@ -1,542 +1,3 @@
-// "use client";
-
-// import { useState, useEffect, useRef, useCallback } from "react";
-// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-// import { Card } from "@/components/ui/card";
-// import {
-//   Send,
-//   Check,
-//   CheckCheck,
-//   MoreVertical,
-//   Heart,
-//   Edit2,
-//   Trash2,
-//   X,
-// } from "lucide-react";
-// import { useToast } from "@/lib/hooks/useToast";
-// import socketIO from "socket.io-client";
-// import { useMemo } from "react";
-
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-// interface MessageSender {
-//   id: string;
-//   name: string;
-//   email: string;
-//   role: string;
-// }
-
-// interface Message {
-//   id: string;
-//   conversationId: string;
-//   senderId: string | null;
-//   senderRole: string | null;
-//   receiverId: string | null;
-//   text: string;
-//   system: boolean;
-//   isLiked: boolean;
-//   isEdited: boolean;
-//   isDeleted: boolean;
-//   deliveredAt: string | null;
-//   readAt: string | null;
-//   createdAt: string;
-//   sender?: MessageSender | null;
-//   receiver?: MessageSender | null;
-// }
-
-// interface RFQChatProps {
-//   conversationId: string;
-//   currentUserId: string;
-//   currentUserRole: "buyer" | "supplier";
-//   rfqId: string;
-//   supplierId: string;
-//   /** Display name of the other party */
-//   otherPartyName?: string;
-// }
-
-// function MessageStatus({ msg, isMine }: { msg: Message; isMine: boolean }) {
-//   if (!isMine) return null;
-//   if (msg.readAt)
-//     return (
-//       <span className="text-blue-300" title="Read">
-//         <CheckCheck className="inline w-3 h-3" />
-//       </span>
-//     );
-//   if (msg.deliveredAt)
-//     return (
-//       <span className="text-white/70" title="Delivered">
-//         <CheckCheck className="inline w-3 h-3" />
-//       </span>
-//     );
-//   return (
-//     <span className="text-white/50" title="Sent">
-//       <Check className="inline w-3 h-3" />
-//     </span>
-//   );
-// }
-
-// export default function RFQChat({
-//   conversationId,
-//   currentUserId,
-//   currentUserRole,
-//   rfqId,
-//   supplierId,
-//   otherPartyName = "Supplier",
-// }: RFQChatProps) {
-//   const { error } = useToast();
-//   const queryClient = useQueryClient();
-//   const [messageText, setMessageText] = useState("");
-//   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-//   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-//   const messagesEndRef = useRef<HTMLDivElement>(null);
-//   const socketRef = useRef<any>(null);
-//   const queryKey = useMemo(
-//     () => ["messages", conversationId],
-//     [conversationId],
-//   );
-
-//   // Close message action menus on outside click
-//   useEffect(() => {
-//     const handleOutsideClick = () => setActiveMenuId(null);
-//     window.addEventListener("click", handleOutsideClick);
-//     return () => window.removeEventListener("click", handleOutsideClick);
-//   }, []);
-
-//   // Fetch messages via React Query (polls every 5s as fallback)
-//   const { data: messages = [] } = useQuery<Message[]>({
-//     queryKey,
-//     queryFn: async () => {
-//       console.log("🔥 GET /messages API called");
-//       const res = await fetch(`${API_URL}/api/messages/${conversationId}`, {
-//         credentials: "include",
-//       });
-//       const data = await res.json();
-//       if (!res.ok) throw new Error(data?.message || "Failed to load messages");
-//       return data.data as Message[];
-//     },
-//     enabled: !!conversationId,
-//   });
-
-//   // Auto-scroll to newest message
-//   useEffect(() => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [messages]);
-
-//   // Mark all messages as read when conversation opens
-//   const markAllRead = useCallback(async () => {
-//     if (!conversationId) return;
-//     await fetch(
-//       `${API_URL}/api/messages/conversation/${conversationId}/read-all`,
-//       { method: "PATCH", credentials: "include" },
-//     );
-//     queryClient.invalidateQueries({ queryKey });
-//     queryClient.invalidateQueries({ queryKey: ["conversations"] });
-//     queryClient.invalidateQueries({ queryKey: ["unread-count"] });
-//   }, [conversationId, queryClient, queryKey]);
-
-//   useEffect(() => {
-//     markAllRead();
-//   }, [markAllRead]);
-
-//   // Socket.io connection – join the conversation room for real-time updates
-//   useEffect(() => {
-//     if (!conversationId) return;
-
-//     const socket = socketIO(API_URL, { withCredentials: true } as any);
-//     socket.on("connect", () => {
-//       console.log("🟢 Socket Connected:", socket.id);
-//       console.log("Socket ID:", socket.id);
-//     });
-
-//     socket.on("disconnect", (reason) => {
-//       console.log("🔴 DISCONNECTED");
-//       console.log("Reason:", reason);
-//     });
-//     socket.on("connect_error", (err) => {
-//       console.log("❌ CONNECT ERROR");
-//       console.log(err);
-//     });
-//     socketRef.current = socket as any;
-
-//     socket.emit("joinConversation", conversationId);
-//     console.log("📨 Joining room:", conversationId);
-
-//     socket.on("message:new", (msg: Message) => {
-//       console.log("📩 message:new", msg);
-//       queryClient.setQueryData<Message[]>(queryKey, (prev = []) => {
-//         if (prev.find((m) => m.id === msg.id)) return prev;
-//         return [...prev, msg];
-//       });
-//       // If the new message is for us, mark it delivered
-//       if (msg.receiverId === currentUserId) {
-//         fetch(`${API_URL}/api/messages/${msg.id}/delivered`, {
-//           method: "PATCH",
-//           credentials: "include",
-//         });
-//       }
-//     });
-
-//     socket.on("message:delivered", (msg: Message) => {
-//       console.log("✅ message:delivered", msg.id);
-//       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
-//         prev.map((m) =>
-//           m.id === msg.id ? { ...m, deliveredAt: msg.deliveredAt } : m,
-//         ),
-//       );
-//     });
-
-//     socket.on("message:read", (msg: Message) => {
-//       console.log("👀 message:read", msg.id);
-//       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
-//         prev.map((m) => (m.id === msg.id ? { ...m, readAt: msg.readAt } : m)),
-//       );
-//     });
-
-//     socket.on("message:updated", (msg: Message) => {
-//       console.log("✏️ message:updated", msg.id);
-//       queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
-//         prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)),
-//       );
-//     });
-
-//     socket.on(
-//       "messages:all-read",
-//       ({ conversationId: cid }: { conversationId: string }) => {
-//         if (cid === conversationId) {
-//           queryClient.setQueryData<Message[]>(queryKey, (prev = []) =>
-//             prev.map((m) =>
-//               m.senderId === currentUserId
-//                 ? { ...m, readAt: new Date().toISOString() }
-//                 : m,
-//             ),
-//           );
-//         }
-//       },
-//     );
-
-//     return () => {
-//       // socket.disconnect();
-//       // socketRef.current = null;
-//       socket.off("message:new");
-//       socket.off("message:delivered");
-//       socket.off("message:read");
-//       socket.off("message:updated");
-//       socket.off("messages:all-read");
-
-//       socket.disconnect();
-//       socketRef.current = null;
-//     };
-//   }, [conversationId, currentUserId, queryClient, queryKey]);
-
-//   // Send message mutation
-//   const sendMessageMutation = useMutation({
-//     mutationFn: async (text: string) => {
-//       const res = await fetch(`${API_URL}/api/messages`, {
-//         method: "POST",
-//         credentials: "include",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ rfqId, supplierId, text }),
-//       });
-//       const data = await res.json();
-//       if (!res.ok) throw new Error(data?.message || "Failed to send message");
-//       return data.data as Message;
-//     },
-//     onSuccess: () => {
-//       setMessageText("");
-//       // queryClient.invalidateQueries({ queryKey });
-//       if (!conversationId) {
-//         queryClient.invalidateQueries({ queryKey: ["rfq"] });
-//         queryClient.invalidateQueries({ queryKey: ["conversations"] });
-//       }
-//     },
-//     onError: (err) => {
-//       error("Send failed", (err as Error).message);
-//     },
-//   });
-
-//   const toggleLikeMutation = useMutation({
-//     mutationFn: async (id: string) => {
-//       const res = await fetch(`${API_URL}/api/messages/${id}/like`, {
-//         method: "PATCH",
-//         credentials: "include",
-//       });
-//       if (!res.ok) throw new Error("Failed to like message");
-//     },
-//   });
-
-//   const editMessageMutation = useMutation({
-//     mutationFn: async ({ id, text }: { id: string; text: string }) => {
-//       const res = await fetch(`${API_URL}/api/messages/${id}/edit`, {
-//         method: "PATCH",
-//         credentials: "include",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ text }),
-//       });
-//       if (!res.ok) throw new Error("Failed to edit message");
-//     },
-//     onSuccess: () => {
-//       setEditingMessageId(null);
-//       setMessageText("");
-//     },
-//   });
-
-//   const deleteMessageMutation = useMutation({
-//     mutationFn: async (id: string) => {
-//       const res = await fetch(`${API_URL}/api/messages/${id}`, {
-//         method: "DELETE",
-//         credentials: "include",
-//       });
-//       if (!res.ok) throw new Error("Failed to delete message");
-//     },
-//   });
-
-//   const handleSend = () => {
-//     const trimmed = messageText.trim();
-//     if (!trimmed) return;
-
-//     if (editingMessageId) {
-//       editMessageMutation.mutate({ id: editingMessageId, text: trimmed });
-//     } else {
-//       sendMessageMutation.mutate(trimmed);
-//     }
-//   };
-
-//   if (!supplierId) {
-//     return (
-//       <Card className="p-6 flex items-center justify-center h-64 text-slate-500 text-sm">
-//         Select a supplier to open the conversation.
-//       </Card>
-//     );
-//   }
-
-//   return (
-//     <Card className="flex flex-col h-[28rem] overflow-hidden shadow-md border border-slate-200 rounded-xl bg-slate-50">
-//       {/* Header */}
-//       <div className="px-4 py-3 border-b bg-white flex items-center justify-between shadow-sm">
-//         <div className="flex items-center gap-3">
-//           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-//             {otherPartyName.charAt(0).toUpperCase()}
-//           </div>
-//           <div>
-//             <p className="font-semibold text-slate-900 text-sm leading-tight">
-//               {otherPartyName}
-//             </p>
-//             <p className="text-xs text-emerald-500 font-medium flex items-center gap-1">
-//               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-//               Real-time Negotiation
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Messages */}
-//       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-slate-50">
-//         {messages.length === 0 ? (
-//           <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-//             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl">
-//               💬
-//             </div>
-//             <p className="text-sm font-medium">
-//               No messages yet. Send a message to start the negotiation.
-//             </p>
-//           </div>
-//         ) : (
-//           messages.map((msg) => {
-//             const isMine = msg.senderId === currentUserId;
-//             const isSystem = msg.system;
-//             const time = new Date(msg.createdAt).toLocaleTimeString([], {
-//               hour: "2-digit",
-//               minute: "2-digit",
-//             });
-
-//             if (isSystem) {
-//               return (
-//                 <div key={msg.id} className="text-center my-2">
-//                   <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/60 px-3 py-1 rounded-full border border-slate-200/40">
-//                     {msg.text}
-//                   </span>
-//                 </div>
-//               );
-//             }
-
-//             return (
-//               <div
-//                 key={msg.id}
-//                 className={`flex group items-end gap-2 ${isMine ? "justify-end" : "justify-start"}`}
-//               >
-//                 {/* Other user avatar (on the left) */}
-//                 {!isMine && (
-//                   <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[11px] font-semibold flex-shrink-0 shadow-sm">
-//                     {otherPartyName.charAt(0).toUpperCase()}
-//                   </div>
-//                 )}
-
-//                 <div className="flex flex-col max-w-[70%] space-y-1 relative">
-//                   {/* Sender Name (only for received messages) */}
-//                   {!isMine && (
-//                     <p className="text-[11px] text-slate-500 font-medium ml-1">
-//                       {msg.sender?.name ?? "Supplier"}
-//                     </p>
-//                   )}
-
-//                   {/* Message Bubble Container with Actions on Hover */}
-//                   <div
-//                     className={`flex items-center gap-2 ${isMine ? "flex-row-reverse animate-in fade-in slide-in-from-right-2 duration-200" : "flex-row animate-in fade-in slide-in-from-left-2 duration-200"}`}
-//                   >
-//                     {/* Message Bubble */}
-//                     <div
-//                       className={`px-4 py-2.5 rounded-2xl text-sm relative group/bubble ${
-//                         msg.isDeleted
-//                           ? "bg-slate-200/50 text-slate-400 italic border border-slate-200/80 rounded-bl-sm"
-//                           : isMine
-//                             ? "bg-purple-600 text-white rounded-br-sm shadow-sm"
-//                             : "bg-white text-slate-800 rounded-bl-sm shadow-sm border border-slate-200/80"
-//                       }`}
-//                     >
-//                       <p className="leading-relaxed whitespace-pre-wrap break-words">
-//                         {msg.text}
-//                       </p>
-
-//                       <div
-//                         className={`flex items-center gap-1 mt-1 justify-end ${
-//                           isMine ? "text-white/60" : "text-slate-400"
-//                         }`}
-//                       >
-//                         {msg.isEdited && !msg.isDeleted && (
-//                           <span className="text-[10px] font-medium italic opacity-85 mr-1">
-//                             edited
-//                           </span>
-//                         )}
-//                         <span className="text-[10px]">{time}</span>
-//                         <MessageStatus msg={msg} isMine={isMine} />
-//                       </div>
-
-//                       {/* Message Reaction / Like Heart Badge */}
-//                       {msg.isLiked && !msg.isDeleted && (
-//                         <div className="absolute -bottom-2 -right-1 bg-white border border-slate-100 rounded-full p-0.5 shadow-sm flex items-center justify-center animate-in zoom-in-50 duration-200">
-//                           <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-//                         </div>
-//                       )}
-//                     </div>
-
-//                     {/* Action buttons (only show if message is NOT deleted) */}
-//                     {!msg.isDeleted && (
-//                       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
-//                         {/* Like/Heart button for received messages */}
-//                         {!isMine && (
-//                           <button
-//                             onClick={() => toggleLikeMutation.mutate(msg.id)}
-//                             className={`p-1.5 rounded-full hover:bg-slate-200 transition-colors ${
-//                               msg.isLiked
-//                                 ? "text-rose-500"
-//                                 : "text-slate-400 hover:text-rose-500"
-//                             }`}
-//                             title={msg.isLiked ? "Unlike" : "Like"}
-//                           >
-//                             <Heart
-//                               className={`w-3.5 h-3.5 ${msg.isLiked ? "fill-rose-500" : ""}`}
-//                             />
-//                           </button>
-//                         )}
-
-//                         {/* Edit / Delete menu for my own messages */}
-//                         {isMine && (
-//                           <div className="relative">
-//                             <button
-//                               onClick={(e) => {
-//                                 e.stopPropagation();
-//                                 setActiveMenuId(
-//                                   activeMenuId === msg.id ? null : msg.id,
-//                                 );
-//                               }}
-//                               className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-//                             >
-//                               <MoreVertical className="w-3.5 h-3.5" />
-//                             </button>
-//                             {activeMenuId === msg.id && (
-//                               <div className="absolute right-0 bottom-full mb-1 w-28 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-//                                 <button
-//                                   onClick={(e) => {
-//                                     e.stopPropagation();
-//                                     setEditingMessageId(msg.id);
-//                                     setMessageText(msg.text);
-//                                     setActiveMenuId(null);
-//                                   }}
-//                                   className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-//                                 >
-//                                   <Edit2 className="w-3 h-3" />
-//                                   Edit
-//                                 </button>
-//                                 <button
-//                                   onClick={(e) => {
-//                                     e.stopPropagation();
-//                                     deleteMessageMutation.mutate(msg.id);
-//                                     setActiveMenuId(null);
-//                                   }}
-//                                   className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
-//                                 >
-//                                   <Trash2 className="w-3 h-3" />
-//                                   Delete
-//                                 </button>
-//                               </div>
-//                             )}
-//                           </div>
-//                         )}
-//                       </div>
-//                     )}
-//                   </div>
-//                 </div>
-//               </div>
-//             );
-//           })
-//         )}
-//         <div ref={messagesEndRef} />
-//       </div>
-
-//       {/* Input */}
-//       <div className="px-4 py-3 border-t bg-white flex flex-col gap-2">
-//         {editingMessageId && (
-//           <div className="flex items-center justify-between bg-slate-100 px-3 py-1.5 rounded-lg text-xs text-slate-600 border border-slate-200">
-//             <span className="font-medium">Editing message...</span>
-//             <button
-//               onClick={() => {
-//                 setEditingMessageId(null);
-//                 setMessageText("");
-//               }}
-//               className="text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
-//             >
-//               <X className="w-3.5 h-3.5" />
-//             </button>
-//           </div>
-//         )}
-//         <div className="flex gap-2">
-//           <input
-//             type="text"
-//             value={messageText}
-//             onChange={(e) => setMessageText(e.target.value)}
-//             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-//             placeholder={
-//               editingMessageId ? "Edit your message..." : "Type a message…"
-//             }
-//             className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all shadow-inner"
-//           />
-//           <button
-//             onClick={handleSend}
-//             disabled={
-//               !messageText.trim() ||
-//               sendMessageMutation.isPending ||
-//               editMessageMutation.isPending
-//             }
-//             className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center hover:opacity-95 disabled:opacity-50 transition-all shadow-md active:scale-95"
-//           >
-//             <Send className="w-4 h-4" />
-//           </button>
-//         </div>
-//       </div>
-//     </Card>
-//   );
-// }
-
 "use client";
 
 import {
@@ -553,7 +14,6 @@ import {
   useQueryClient,
   InfiniteData,
 } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
 import {
   Send,
   Check,
@@ -563,6 +23,7 @@ import {
   Edit2,
   Trash2,
   X,
+  Paperclip,
 } from "lucide-react";
 import { useToast } from "@/lib/hooks/useToast";
 import socketIO from "socket.io-client";
@@ -605,43 +66,47 @@ interface RFQChatProps {
   currentUserRole: "buyer" | "supplier";
   rfqId: string;
   supplierId: string;
-  /** Display name of the other party */
   otherPartyName?: string;
+  otherPartyId?: string;
+  // ADD THESE
+  otherPartyOnline?: boolean;
+  otherPartyLastSeen?: string | null;
 }
 
 function MessageStatus({ msg, isMine }: { msg: Message; isMine: boolean }) {
   if (!isMine) return null;
-  if (msg.readAt)
+
+  if (msg.readAt) {
     return (
-      <span className="text-blue-300" title="Read">
-        <CheckCheck className="inline w-3 h-3" />
+      <span className="text-sky-300" title="Read">
+        <CheckCheck className="inline h-3.5 w-3.5" />
       </span>
     );
-  if (msg.deliveredAt)
+  }
+
+  if (msg.deliveredAt) {
     return (
-      <span className="text-white/70" title="Delivered">
-        <CheckCheck className="inline w-3 h-3" />
+      <span className="text-white/80" title="Delivered">
+        <CheckCheck className="inline h-3.5 w-3.5" />
       </span>
     );
+  }
+
   return (
-    <span className="text-white/50" title="Sent">
-      <Check className="inline w-3 h-3" />
+    <span className="text-white/60" title="Sent">
+      <Check className="inline h-3.5 w-3.5" />
     </span>
   );
 }
+
 function formatMessageDate(date: string) {
   const d = new Date(date);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
 
-  if (d.toDateString() === today.toDateString()) {
-    return "Today";
-  }
-
-  if (d.toDateString() === yesterday.toDateString()) {
-    return "Yesterday";
-  }
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
 
   return d.toLocaleDateString([], {
     day: "numeric",
@@ -656,13 +121,24 @@ export default function RFQChat({
   currentUserRole,
   rfqId,
   supplierId,
-  otherPartyName = "Supplier",
+  otherPartyId, // fallback to supplierId for buyer
+  otherPartyName = "User",
+  otherPartyOnline = false,
+  otherPartyLastSeen = null,
 }: RFQChatProps) {
   const { error } = useToast();
   const queryClient = useQueryClient();
+
   const [messageText, setMessageText] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  const targetUserId = otherPartyId || supplierId;
+
+  const [isOnline, setIsOnline] = useState(otherPartyOnline);
+  const [lastSeen, setLastSeen] = useState<string | null>(otherPartyLastSeen);
+
+  // Sync when conversation changes
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -676,7 +152,16 @@ export default function RFQChat({
     [conversationId],
   );
 
-  // Paginated fetch: newest 20 first, older pages loaded on scroll-up
+  // Reset state when conversation changes
+  useEffect(() => {
+    isFirstLoadRef.current = true;
+    isLoadingOlderRef.current = false;
+    prevScrollHeightRef.current = 0;
+    setMessageText("");
+    setEditingMessageId(null);
+    setActiveMenuId(null);
+  }, [conversationId]);
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery<MessagesPage>({
       queryKey,
@@ -689,8 +174,9 @@ export default function RFQChat({
           { credentials: "include" },
         );
         const json = await res.json();
-        if (!res.ok)
+        if (!res.ok) {
           throw new Error(json?.message || "Failed to load messages");
+        }
         return json.data as MessagesPage;
       },
       initialPageParam: undefined as string | undefined,
@@ -698,38 +184,51 @@ export default function RFQChat({
       enabled: !!conversationId,
     });
 
-  // pages[0] = newest page, later pages = older. Flatten oldest -> newest for render.
-  // const messages = useMemo(
-  //   () => [...(data?.pages ?? [])].reverse().flatMap((p) => p.messages),
-  //   [data],
-  // );
+  // Sync when conversation changes
+  useEffect(() => {
+    setIsOnline(otherPartyOnline);
+    setLastSeen(otherPartyLastSeen);
+  }, [otherPartyOnline, otherPartyLastSeen, conversationId]);
 
+  // Always produce oldest → newest order
   const messages = useMemo(() => {
-    const all = [...(data?.pages ?? [])].reverse().flatMap((p) => p.messages);
+    if (!data?.pages) return [];
 
-    return Array.from(new Map(all.map((m) => [m.id, m])).values());
-  }, [data]);
+    const all = [...data.pages].reverse().flatMap((page) => page.messages);
 
-  // Close message action menus on outside click
+    const unique = Array.from(new Map(all.map((m) => [m.id, m])).values());
+
+    return unique.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }, [data, conversationId]);
+
+  // Close menus on outside click
   useEffect(() => {
     const handleOutsideClick = () => setActiveMenuId(null);
     window.addEventListener("click", handleOutsideClick);
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
-  // Auto-scroll to newest message — but not when we just loaded an older page
+  // Auto-scroll to bottom
   useEffect(() => {
     if (isLoadingOlderRef.current) {
       isLoadingOlderRef.current = false;
       return;
     }
-    messagesEndRef.current?.scrollIntoView({
-      behavior: isFirstLoadRef.current ? "auto" : "smooth",
-    });
-    isFirstLoadRef.current = false;
+
+    const timeout = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isFirstLoadRef.current ? "auto" : "smooth",
+      });
+      isFirstLoadRef.current = false;
+    }, 50);
+
+    return () => clearTimeout(timeout);
   }, [messages]);
 
-  // Restore scroll position after older messages are prepended
+  // Restore scroll position when loading older messages
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el || !prevScrollHeightRef.current) return;
@@ -749,7 +248,6 @@ export default function RFQChat({
     }
   };
 
-  // Mark all messages as read when conversation opens
   const markAllRead = useCallback(async () => {
     if (!conversationId) return;
     await fetch(
@@ -765,7 +263,6 @@ export default function RFQChat({
     markAllRead();
   }, [markAllRead]);
 
-  // Helper: apply an update function to every message across all cached pages
   const updateMessageInCache = useCallback(
     (id: string, updater: (m: Message) => Message) => {
       queryClient.setQueryData<InfiniteData<MessagesPage>>(queryKey, (prev) => {
@@ -782,66 +279,36 @@ export default function RFQChat({
     [queryClient, queryKey],
   );
 
-  // Socket.io connection – join the conversation room for real-time updates
+  // Socket
   useEffect(() => {
     if (!conversationId) return;
 
     const socket = socketIO(API_URL, { withCredentials: true } as any);
-    socket.on("connect", () => {
-      console.log("🟢 Socket Connected:", socket.id);
-    });
-    socket.on("disconnect", (reason) => {
-      console.log("🔴 DISCONNECTED", reason);
-    });
-    socket.on("connect_error", (err) => {
-      console.log("❌ CONNECT ERROR", err);
-    });
     socketRef.current = socket as any;
 
     socket.emit("joinConversation", conversationId);
 
-    // New message: append to the newest (first) page only
-    // socket.on("message:new", (msg: Message) => {
-    //   queryClient.setQueryData<InfiniteData<MessagesPage>>(queryKey, (prev) => {
-    //     if (!prev) return prev;
-    //     const pages = [...prev.pages];
-    //     if (pages[0]?.messages.find((m) => m.id === msg.id)) return prev;
-    //     pages[0] = {
-    //       ...pages[0],
-    //       messages: [...(pages[0]?.messages ?? []), msg],
-    //     };
-    //     return { ...prev, pages };
-    //   });
-    //   if (msg.receiverId === currentUserId) {
-    //     fetch(`${API_URL}/api/messages/${msg.id}/delivered`, {
-    //       method: "PATCH",
-    //       credentials: "include",
-    //     });
-    //   }
-    // });
-
     socket.on("message:new", (msg: Message) => {
       queryClient.setQueryData<InfiniteData<MessagesPage>>(queryKey, (prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return {
+            pages: [{ messages: [msg], nextCursor: null }],
+            pageParams: [undefined],
+          };
+        }
 
-        // Check ALL pages, not just page 0
         const alreadyExists = prev.pages.some((page) =>
           page.messages.some((m) => m.id === msg.id),
         );
-
         if (alreadyExists) return prev;
 
         const pages = [...prev.pages];
-
         pages[0] = {
           ...pages[0],
-          messages: [...pages[0].messages, msg],
+          messages: [...(pages[0]?.messages ?? []), msg],
         };
 
-        return {
-          ...prev,
-          pages,
-        };
+        return { ...prev, pages };
       });
 
       if (msg.receiverId === currentUserId) {
@@ -866,6 +333,23 @@ export default function RFQChat({
     socket.on("message:updated", (msg: Message) => {
       updateMessageInCache(msg.id, (m) => ({ ...m, ...msg }));
     });
+
+    // USER ONLINE
+    socket.on("user:online", ({ userId }: { userId: string }) => {
+      if (userId === supplierId) {
+        setIsOnline(true);
+      }
+    });
+    // USER OFFLINE
+    socket.on(
+      "user:offline",
+      ({ userId, lastSeen: ls }: { userId: string; lastSeen: string }) => {
+        if (userId === targetUserId) {
+          setIsOnline(false);
+          setLastSeen(ls);
+        }
+      },
+    );
 
     socket.on(
       "messages:all-read",
@@ -897,6 +381,8 @@ export default function RFQChat({
       socket.off("message:read");
       socket.off("message:updated");
       socket.off("messages:all-read");
+      socket.off("user:online");
+      socket.off("user:offline");
       socket.disconnect();
       socketRef.current = null;
     };
@@ -908,7 +394,6 @@ export default function RFQChat({
     updateMessageInCache,
   ]);
 
-  // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
       const res = await fetch(`${API_URL}/api/messages`, {
@@ -982,28 +467,37 @@ export default function RFQChat({
 
   if (!supplierId) {
     return (
-      <Card className="p-6 flex items-center justify-center h-64 text-slate-500 text-sm">
+      <div className="flex h-full items-center justify-center text-sm text-slate-500">
         Select a supplier to open the conversation.
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="flex flex-col h-[28rem] overflow-hidden shadow-md border border-slate-200 rounded-xl bg-slate-50">
-      {/* Header */}
-      <div className="px-4 py-3 border-b bg-white flex items-center justify-between shadow-sm">
+    <div className="flex h-full flex-col bg-white">
+      {/* HEADER */}
+      <div className="border-b border-slate-200 px-5 py-3 bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-            {otherPartyName.charAt(0).toUpperCase()}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 font-semibold text-orange-600">
+            {otherPartyName?.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <p className="font-semibold text-slate-900 text-sm leading-tight">
+
+          <div className="flex flex-col">
+            <h2 className="text-sm font-semibold text-slate-900">
               {otherPartyName}
-            </p>
-            <p className="text-xs text-emerald-500 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-              Real-time Negotiation
-            </p>
+            </h2>
+
+            <div className="text-xs">
+              {isOnline ? (
+                <span className="font-medium text-green-600">Online</span>
+              ) : lastSeen ? (
+                <span className="text-slate-500">
+                  Last seen {new Date(lastSeen).toLocaleString()}
+                </span>
+              ) : (
+                <span className="text-slate-400">Offline</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1012,103 +506,90 @@ export default function RFQChat({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-slate-50"
+        className="flex-1 overflow-y-auto"
       >
-        {isFetchingNextPage && (
-          <div className="text-center text-xs text-slate-400 py-1">
-            Loading older messages…
-          </div>
-        )}
-
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl">
-              💬
+        <div className="flex min-h-full flex-col justify-end px-5 py-5 space-y-3">
+          {isFetchingNextPage && (
+            <div className="py-2 text-center text-xs text-slate-400">
+              Loading older messages…
             </div>
-            <p className="text-sm font-medium">
-              No messages yet. Send a message to start the negotiation.
-            </p>
-          </div>
-        ) : (
-          messages.map((msg, index) => {
-            const isMine = msg.senderRole
-              ? msg.senderRole === currentUserRole
-              : msg.senderId === currentUserId;
-            const isSystem = msg.system;
-            const time = new Date(msg.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            const previousMessage = messages[index - 1];
+          )}
 
-            const currentDate = new Date(msg.createdAt).toDateString();
-            const previousDate = previousMessage
-              ? new Date(previousMessage.createdAt).toDateString()
-              : null;
+          {messages.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center text-slate-400">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                💬
+              </div>
+              <p className="text-sm font-medium text-slate-500">
+                No messages yet
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Send a message to start the negotiation
+              </p>
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              const isMine = msg.senderRole
+                ? msg.senderRole === currentUserRole
+                : msg.senderId === currentUserId;
+              const isSystem = msg.system;
+              const time = new Date(msg.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              const previousMessage = messages[index - 1];
+              const currentDate = new Date(msg.createdAt).toDateString();
+              const previousDate = previousMessage
+                ? new Date(previousMessage.createdAt).toDateString()
+                : null;
+              const showDate = currentDate !== previousDate;
 
-            const showDate = currentDate !== previousDate;
-            if (isSystem) {
-              return (
-                <div key={msg.id} className="text-center my-2">
-                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/60 px-3 py-1 rounded-full border border-slate-200/40">
-                    {msg.text}
-                  </span>
-                </div>
-              );
-            }
-
-            return (
-              <Fragment key={msg.id}>
-                {showDate && (
-                  <div className="flex justify-center my-4">
-                    <span className="px-3 py-1 rounded-full bg-slate-200 text-xs text-slate-600 font-medium shadow-sm">
-                      {formatMessageDate(msg.createdAt)}
+              if (isSystem) {
+                return (
+                  <div key={msg.id} className="my-3 text-center">
+                    <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-500">
+                      {msg.text}
                     </span>
                   </div>
-                )}
+                );
+              }
 
-                <div
-                  key={msg.id}
-                  className={`flex group items-end gap-2 ${
-                    isMine ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {!isMine && (
-                    <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[11px] font-semibold flex-shrink-0 shadow-sm">
-                      {otherPartyName.charAt(0).toUpperCase()}
+              return (
+                <Fragment key={msg.id}>
+                  {showDate && (
+                    <div className="my-5 flex justify-center">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-500">
+                        {formatMessageDate(msg.createdAt)}
+                      </span>
                     </div>
                   )}
 
-                  <div className="flex flex-col max-w-[70%] space-y-1 relative">
-                    {!isMine && (
-                      <p className="text-[11px] text-slate-500 font-medium ml-1">
-                        {msg.sender?.name ?? "Supplier"}
-                      </p>
-                    )}
-
-                    <div
-                      className={`flex items-center gap-2 ${isMine ? "flex-row-reverse animate-in fade-in slide-in-from-right-2 duration-200" : "flex-row animate-in fade-in slide-in-from-left-2 duration-200"}`}
-                    >
+                  <div
+                    className={`group flex items-end gap-2 ${
+                      isMine ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div className="relative max-w-[75%]">
                       <div
-                        className={`px-4 py-2.5 rounded-2xl text-sm relative group/bubble ${
+                        className={`px-4 py-2.5 text-[13.5px] leading-relaxed ${
                           msg.isDeleted
-                            ? "bg-slate-200/50 text-slate-400 italic border border-slate-200/80 rounded-bl-sm"
+                            ? "rounded-2xl border border-slate-200 bg-slate-50 italic text-slate-400"
                             : isMine
-                              ? "bg-purple-600 text-white rounded-br-sm shadow-sm"
-                              : "bg-white text-slate-800 rounded-bl-sm shadow-sm border border-slate-200/80"
+                              ? "rounded-2xl rounded-br-md bg-orange-500 text-white shadow-sm"
+                              : "rounded-2xl rounded-bl-md border border-slate-100 bg-white text-slate-800 shadow-sm"
                         }`}
                       >
-                        <p className="leading-relaxed whitespace-pre-wrap break-words">
+                        <p className="whitespace-pre-wrap break-words">
                           {msg.text}
                         </p>
 
                         <div
-                          className={`flex items-center gap-1 mt-1 justify-end ${
-                            isMine ? "text-white/60" : "text-slate-400"
+                          className={`mt-1 flex items-center justify-end gap-1 ${
+                            isMine ? "text-orange-100" : "text-slate-400"
                           }`}
                         >
                           {msg.isEdited && !msg.isDeleted && (
-                            <span className="text-[10px] font-medium italic opacity-85 mr-1">
+                            <span className="mr-0.5 text-[10px] italic opacity-80">
                               edited
                             </span>
                           )}
@@ -1117,18 +598,22 @@ export default function RFQChat({
                         </div>
 
                         {msg.isLiked && !msg.isDeleted && (
-                          <div className="absolute -bottom-2 -right-1 bg-white border border-slate-100 rounded-full p-0.5 shadow-sm flex items-center justify-center animate-in zoom-in-50 duration-200">
-                            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                          <div className="absolute -bottom-2 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-slate-100 bg-white shadow-sm">
+                            <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
                           </div>
                         )}
                       </div>
 
                       {!msg.isDeleted && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
+                        <div
+                          className={`absolute top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 ${
+                            isMine ? "-left-10" : "-right-10"
+                          }`}
+                        >
                           {!isMine && (
                             <button
                               onClick={() => toggleLikeMutation.mutate(msg.id)}
-                              className={`p-1.5 rounded-full hover:bg-slate-200 transition-colors ${
+                              className={`rounded-full p-1.5 hover:bg-slate-100 ${
                                 msg.isLiked
                                   ? "text-rose-500"
                                   : "text-slate-400 hover:text-rose-500"
@@ -1136,7 +621,9 @@ export default function RFQChat({
                               title={msg.isLiked ? "Unlike" : "Like"}
                             >
                               <Heart
-                                className={`w-3.5 h-3.5 ${msg.isLiked ? "fill-rose-500" : ""}`}
+                                className={`h-3.5 w-3.5 ${
+                                  msg.isLiked ? "fill-rose-500" : ""
+                                }`}
                               />
                             </button>
                           )}
@@ -1150,12 +637,13 @@ export default function RFQChat({
                                     activeMenuId === msg.id ? null : msg.id,
                                   );
                                 }}
-                                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                               >
-                                <MoreVertical className="w-3.5 h-3.5" />
+                                <MoreVertical className="h-3.5 w-3.5" />
                               </button>
+
                               {activeMenuId === msg.id && (
-                                <div className="absolute right-0 bottom-full mb-1 w-28 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                                <div className="absolute bottom-full right-0 z-50 mb-1 w-28 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1163,9 +651,9 @@ export default function RFQChat({
                                       setMessageText(msg.text);
                                       setActiveMenuId(null);
                                     }}
-                                    className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
                                   >
-                                    <Edit2 className="w-3 h-3" />
+                                    <Edit2 className="h-3 w-3" />
                                     Edit
                                   </button>
                                   <button
@@ -1174,9 +662,9 @@ export default function RFQChat({
                                       deleteMessageMutation.mutate(msg.id);
                                       setActiveMenuId(null);
                                     }}
-                                    className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-rose-600 hover:bg-rose-50"
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="h-3 w-3" />
                                     Delete
                                   </button>
                                 </div>
@@ -1187,41 +675,57 @@ export default function RFQChat({
                       )}
                     </div>
                   </div>
-                </div>
-              </Fragment>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
+                </Fragment>
+              );
+            })
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 border-t bg-white flex flex-col gap-2">
+      <div className="border-t border-slate-100 bg-white px-4 py-3">
         {editingMessageId && (
-          <div className="flex items-center justify-between bg-slate-100 px-3 py-1.5 rounded-lg text-xs text-slate-600 border border-slate-200">
-            <span className="font-medium">Editing message...</span>
+          <div className="mb-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+            <span className="font-medium">Editing message…</span>
             <button
               onClick={() => {
                 setEditingMessageId(null);
                 setMessageText("");
               }}
-              className="text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+              className="rounded-full p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
-        <div className="flex gap-2">
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            title="Attach file"
+          >
+            <Paperclip className="h-5 w-5" />
+          </button>
+
           <input
             type="text"
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder={
-              editingMessageId ? "Edit your message..." : "Type a message…"
+              editingMessageId ? "Edit your message…" : "Type a message..."
             }
-            className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all shadow-inner"
+            className="h-11 flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-100"
           />
+
           <button
             onClick={handleSend}
             disabled={
@@ -1229,12 +733,12 @@ export default function RFQChat({
               sendMessageMutation.isPending ||
               editMessageMutation.isPending
             }
-            className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center hover:opacity-95 disabled:opacity-50 transition-all shadow-md active:scale-95"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition hover:bg-orange-600 disabled:opacity-40 active:scale-95"
           >
-            <Send className="w-4 h-4" />
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

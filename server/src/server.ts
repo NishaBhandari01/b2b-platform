@@ -2,6 +2,8 @@
 import http from "http";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
+import { parse } from "cookie";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -20,40 +22,121 @@ export const io = new Server(httpServer, {
 // Attach io to app so controllers can emit events via req.app.get('io')
 app.set("io", io);
 
-// Socket.io connection handling
-io.on("connection", (socket) => {
-  console.log("🔌 New client connected", socket.id);
+io.use(async (socket, next) => {
+  try {
+    const cookies = parse(socket.handshake.headers.cookie || "");
 
-  // Join an RFQ room (legacy – kept for backward compat)
-  socket.on("joinRfQ", (rfqId: string) => {
-    socket.join(`rfq:${rfqId}`);
-    console.log(`Client ${socket.id} joined RFQ room rfq:${rfqId}`);
-  });
+    const token = cookies.accessToken;
 
-  // Join a conversation room – used for real-time chat
-  socket.on("joinConversation", (conversationId: string) => {
-    socket.join(`conversation:${conversationId}`);
-    console.log(
-      `Client ${socket.id} joined conversation room conversation:${conversationId}`,
-    );
-  });
+    if (!token) {
+      return next(new Error("Unauthorized"));
+    }
 
-  socket.on("disconnect", () => {
-    console.log("📴 Client disconnected", socket.id);
-  });
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "dev-access-secret",
+    ) as {
+      id: string;
+      role: string;
+    };
+
+    socket.data.user = decoded;
+
+    next();
+  } catch (err) {
+    next(new Error("Unauthorized"));
+  }
 });
 
-// Ensure DB schema is up‑to‑date
-// try {
-//   if (process.env.NODE_ENV !== "production") {
-//     console.log("⏳ Applying Prisma schema to the database...");
-//     execSync("npx prisma db push --schema prisma/schema.prisma", {
-//       stdio: "inherit",
-//     });
-//   }
-// } catch (err) {
-//   console.error("⚠️ Prisma db push failed:", err);
-// }
+// // Socket.io connection handling
+// io.on("connection", (socket) => {
+//   console.log("🔌 New client connected", socket.id);
+
+//   // Join an RFQ room (legacy – kept for backward compat)
+//   socket.on("joinRfQ", (rfqId: string) => {
+//     socket.join(`rfq:${rfqId}`);
+//     console.log(`Client ${socket.id} joined RFQ room rfq:${rfqId}`);
+//   });
+
+//   // Join a conversation room – used for real-time chat
+//   socket.on("joinConversation", (conversationId: string) => {
+//     socket.join(`conversation:${conversationId}`);
+//     console.log(
+//       `Client ${socket.id} joined conversation room conversation:${conversationId}`,
+//     );
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log("📴 Client disconnected", socket.id);
+//   });
+// });
+
+// In-memory presence map (userId → Set of socket ids)
+const onlineUsers = new Map<string, Set<string>>();
+
+io.on("connection", async (socket) => {
+  const user = socket.data.user as { id: string; role: string };
+  console.log("🔌 New client connected", socket.id, user?.id);
+
+  if (user?.id) {
+    // Join personal room so we can target this user later if needed
+    socket.join(`user:${user.id}`);
+
+    // Track presence
+    if (!onlineUsers.has(user.id)) {
+      onlineUsers.set(user.id, new Set());
+    }
+    onlineUsers.get(user.id)!.add(socket.id);
+
+    // First socket for this user → they just came online
+    if (onlineUsers.get(user.id)!.size === 1) {
+      // Persist online status
+      await prisma.user
+        .update({
+          where: { id: user.id },
+          data: { isOnline: true, lastSeen: null },
+        })
+        .catch(() => {});
+
+      // Notify everyone (or you can narrow later)
+      io.emit("user:online", { userId: user.id });
+    }
+  }
+
+  socket.on("joinRfQ", (rfqId: string) => {
+    socket.join(`rfq:${rfqId}`);
+  });
+
+  socket.on("joinConversation", (conversationId: string) => {
+    socket.join(`conversation:${conversationId}`);
+  });
+
+  socket.on("disconnect", async () => {
+    console.log("📴 Client disconnected", socket.id);
+
+    if (!user?.id) return;
+
+    const sockets = onlineUsers.get(user.id);
+    if (!sockets) return;
+
+    sockets.delete(socket.id);
+
+    // Last socket gone → user is offline
+    if (sockets.size === 0) {
+      onlineUsers.delete(user.id);
+      const lastSeen = new Date().toISOString();
+
+      await prisma.user
+        .update({
+          where: { id: user.id },
+          data: { isOnline: false, lastSeen },
+        })
+        .catch(() => {});
+
+      io.emit("user:offline", { userId: user.id, lastSeen });
+    }
+  });
+});
 
 // Test DB connection
 async function testDB() {

@@ -20,13 +20,7 @@ export const authenticate = (
   const tokenFromCookie = req.cookies?.accessToken;
   const token = tokenFromHeader || tokenFromCookie;
 
-  // console.log(`[Auth] Checking route ${req.method} ${req.originalUrl}`);
-  // console.log(
-  //   `[Auth] Header token: ${!!tokenFromHeader}, Cookie token: ${!!tokenFromCookie}`,
-  // );
-
   if (!token) {
-    // console.log(`[Auth] Unauthorized: No token found`);
     return res.status(401).json({
       success: false,
       message: "Unauthorized",
@@ -54,4 +48,7 @@ export const authenticate = (
       message: "Invalid token",
     });
   }
+
+  console.log("VERIFY SECRET:", process.env.JWT_SECRET);
+  console.log("TOKEN:", token);
 };

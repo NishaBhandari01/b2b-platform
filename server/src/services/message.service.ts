@@ -22,12 +22,12 @@ export class MessageService {
   ) {
     const messages = await prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "desc" },
-      take: limit + 1, // fetch one extra to know if there's more
+      orderBy: { createdAt: "desc" }, // newest first
+      take: limit + 1,
       ...(cursor
         ? {
             cursor: { id: cursor },
-            skip: 1, // skip the cursor message itself
+            skip: 1,
           }
         : {}),
       include: {
@@ -41,10 +41,13 @@ export class MessageService {
     const hasMore = messages.length > limit;
     const page = hasMore ? messages.slice(0, limit) : messages;
 
+    // Reverse so frontend receives oldest → newest
+    const sorted = page.reverse();
+
     return {
-      // reverse so this page is oldest -> newest, ready to render
-      messages: page.reverse(),
-      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+      messages: sorted,
+      // nextCursor must be the oldest message of this page
+      nextCursor: hasMore ? (sorted[0]?.id ?? null) : null,
     };
   }
 
