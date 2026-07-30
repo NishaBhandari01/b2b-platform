@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SupplierSidebar } from "@/components/layouts/SupplierSidebar";
 import { SupplierNavbar } from "@/components/layouts/SupplierNavbar";
+import SocketProvider from "@/components/SocketProvider";
 
 export default function SupplierLayout({
   children,
@@ -56,14 +57,16 @@ export default function SupplierLayout({
   }
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <SupplierSidebar />
-      <div className="flex-1 flex flex-col">
-        <SupplierNavbar userName={user?.name} />
-        <main className="flex-1 overflow-auto">
-          <div className="p-8">{children}</div>
-        </main>
+    <SocketProvider>
+      <div className="flex h-screen bg-slate-50">
+        <SupplierSidebar />
+        <div className="flex-1 flex flex-col">
+          <SupplierNavbar userName={user?.name} />
+          <main className="flex-1 overflow-auto">
+            <div className="p-8">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SocketProvider>
   );
 }

@@ -5,6 +5,7 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import path from "path";
 
+import { setupSwagger } from "./config/swagger.js";
 import authRoutes from "./routes/auth.routes.js";
 import rfqRoutes from "./routes/rfq.routes.js";
 import quotationRoutes from "./routes/quotation.routes.js";
@@ -13,7 +14,7 @@ import messageRoutes from "./routes/message.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import orderRoutes from "./routes/order.routes.js";
-import { setupSwagger } from "./config/swagger.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
 setupSwagger(app);
@@ -27,7 +28,7 @@ app.use(
 
 app.use(express.json());
 app.use((req, res, next) => {
-  console.log("GLOBAL BODY CHECK:", req.body);
+  // console.log("GLOBAL BODY CHECK:", req.body);
   next();
 });
 app.use(cookieParser());
@@ -42,6 +43,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/supplier", analyticsRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 export default app;

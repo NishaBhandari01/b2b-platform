@@ -115,6 +115,37 @@ function formatMessageDate(date: string) {
   });
 }
 
+function formatPresence(isOnline: boolean, lastSeen: string | null) {
+  if (isOnline) {
+    return { text: "Online", className: "font-medium text-green-600" };
+  }
+
+  if (!lastSeen) {
+    return { text: "Offline", className: "text-slate-400" };
+  }
+
+  const diffSec = Math.floor(
+    (Date.now() - new Date(lastSeen).getTime()) / 1000,
+  );
+
+  if (diffSec < 60) {
+    return { text: "Last seen just now", className: "text-slate-500" };
+  }
+  if (diffSec < 3600) {
+    const m = Math.floor(diffSec / 60);
+    return { text: `Last seen ${m}m ago`, className: "text-slate-500" };
+  }
+  if (diffSec < 86400) {
+    const h = Math.floor(diffSec / 3600);
+    return { text: `Last seen ${h}h ago`, className: "text-slate-500" };
+  }
+
+  return {
+    text: `Last seen ${new Date(lastSeen).toLocaleString()}`,
+    className: "text-slate-500",
+  };
+}
+
 export default function RFQChat({
   conversationId,
   currentUserId,
@@ -137,6 +168,8 @@ export default function RFQChat({
 
   const [isOnline, setIsOnline] = useState(otherPartyOnline);
   const [lastSeen, setLastSeen] = useState<string | null>(otherPartyLastSeen);
+
+  const presence = formatPresence(isOnline, lastSeen);
 
   // Sync when conversation changes
 
@@ -333,13 +366,13 @@ export default function RFQChat({
     socket.on("message:updated", (msg: Message) => {
       updateMessageInCache(msg.id, (m) => ({ ...m, ...msg }));
     });
-
     // USER ONLINE
     socket.on("user:online", ({ userId }: { userId: string }) => {
-      if (userId === supplierId) {
+      if (userId === targetUserId) {
         setIsOnline(true);
       }
     });
+
     // USER OFFLINE
     socket.on(
       "user:offline",
@@ -350,7 +383,6 @@ export default function RFQChat({
         }
       },
     );
-
     socket.on(
       "messages:all-read",
       ({ conversationId: cid }: { conversationId: string }) => {
@@ -476,6 +508,7 @@ export default function RFQChat({
   return (
     <div className="flex h-full flex-col bg-white">
       {/* HEADER */}
+
       <div className="border-b border-slate-200 px-5 py-3 bg-white">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 font-semibold text-orange-600">
@@ -487,16 +520,9 @@ export default function RFQChat({
               {otherPartyName}
             </h2>
 
-            <div className="text-xs">
-              {isOnline ? (
-                <span className="font-medium text-green-600">Online</span>
-              ) : lastSeen ? (
-                <span className="text-slate-500">
-                  Last seen {new Date(lastSeen).toLocaleString()}
-                </span>
-              ) : (
-                <span className="text-slate-400">Offline</span>
-              )}
+            {/* ✅ USE IT HERE */}
+            <div className={`text-xs ${presence.className}`}>
+              {presence.text}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -16,7 +16,7 @@ export class ConversationService {
     });
 
     if (!quotation) {
-      throw new Error('Quotation not found for this RFQ and supplier');
+      throw new Error("Quotation not found for this RFQ and supplier");
     }
 
     // Try to find a conversation linked to this quotation
@@ -55,11 +55,19 @@ export class ConversationService {
         quotation: {
           include: {
             rfq: { select: { id: true, title: true } },
-            supplier: { select: { id: true, name: true, email: true } },
+            supplier: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                isOnline: true, // ← add
+                lastSeen: true, // ← add
+              },
+            },
           },
         },
         messages: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1,
           include: {
             sender: { select: { id: true, name: true } },
@@ -80,14 +88,22 @@ export class ConversationService {
               select: {
                 id: true,
                 title: true,
-                user: { select: { id: true, name: true, email: true } },
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    isOnline: true, // ← add
+                    lastSeen: true, // ← add
+                  },
+                },
               },
             },
             supplier: { select: { id: true, name: true, email: true } },
           },
         },
         messages: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1,
           include: {
             sender: { select: { id: true, name: true } },

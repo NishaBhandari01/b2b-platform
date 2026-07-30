@@ -162,10 +162,14 @@ class ProductController {
   }
 
   async deleteProduct(req: AuthRequest, res: Response) {
+    console.log("DELETE HIT");
+    console.log(req.method);
+    console.log(req.originalUrl);
+    console.log(req.params);
+    console.log("Authenticated user:", req.user);
     try {
       const supplierId = req.user!.id;
       const id = req.params.id as string;
-
       await productService.deleteProduct(id, supplierId);
 
       return res.status(200).json({
@@ -173,9 +177,18 @@ class ProductController {
         message: "Product deleted successfully",
       });
     } catch (error: any) {
-      return res.status(404).json({
+      console.error(error);
+
+      if (error.message === "Product not found") {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Internal server error",
       });
     }
   }

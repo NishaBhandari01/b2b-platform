@@ -118,6 +118,11 @@ class ProductRepository {
   }
 
   async deleteProduct(productId: string, supplierId: string) {
+    console.log({
+      productId,
+      supplierId,
+    });
+
     const product = await prisma.product.findFirst({
       where: {
         id: productId,
@@ -128,30 +133,45 @@ class ProductRepository {
       },
     });
 
+    console.log("FOUND PRODUCT:", product);
+
     if (!product) {
       return null;
     }
 
+    console.log("Images:", product.images);
+
+    // Delete images from Cloudflare R2
     for (const image of product.images) {
+      console.log("Deleting R2 key:", image.publicId);
+
       await r2.send(
         new DeleteObjectCommand({
           Bucket: bucketName,
-          Key: image.key,
+          Key: image.publicId,
         }),
       );
     }
 
+    console.log("Deleting DB images");
+
+    // Delete image records
     await prisma.productImage.deleteMany({
       where: {
         productId,
       },
     });
 
+    console.log("Deleting product");
+
+    // Delete product
     await prisma.product.delete({
       where: {
         id: productId,
       },
     });
+
+    console.log("Done");
 
     return product;
   }

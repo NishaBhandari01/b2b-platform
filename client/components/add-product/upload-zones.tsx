@@ -229,8 +229,8 @@ export function DocumentSlot({
       status: "uploading",
     };
     onChange(doc);
-    uploadFileApi(file, (pct) => onChange({ ...doc, progress: pct }))
-      .then((res) => {
+    uploadFileApi(file, (pct: any) => onChange({ ...doc, progress: pct }))
+      .then((res: any) => {
         onChange({
           ...doc,
           progress: 100,

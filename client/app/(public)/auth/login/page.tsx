@@ -95,13 +95,8 @@ export default function LoginPage() {
       success("Signed in", `Welcome back, ${userData.name}.`);
       router.push(dashboardUrl);
     } catch (err) {
-      setError(
-        "Invalid email or password. Try buyer@tradehub.com / buyer123, supplier@tradehub.com / supplier123, or admin@tradehub.com / admin123.",
-      );
-      showError(
-        "Login failed",
-        "Use the demo credentials shown below to continue.",
-      );
+      setError("Invalid email or password.");
+      showError("Login failed", "Use the correct Email and password");
     }
   };
 

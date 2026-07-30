@@ -35,9 +35,6 @@ export const authenticate = (
       id: string;
       role: string;
     };
-
-    // console.log("[Auth] Decoded token:", decoded);
-
     req.user = decoded;
 
     next();
@@ -48,7 +45,4 @@ export const authenticate = (
       message: "Invalid token",
     });
   }
-
-  console.log("VERIFY SECRET:", process.env.JWT_SECRET);
-  console.log("TOKEN:", token);
 };

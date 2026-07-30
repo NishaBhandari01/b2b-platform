@@ -48,29 +48,6 @@ io.use(async (socket, next) => {
   }
 });
 
-// // Socket.io connection handling
-// io.on("connection", (socket) => {
-//   console.log("🔌 New client connected", socket.id);
-
-//   // Join an RFQ room (legacy – kept for backward compat)
-//   socket.on("joinRfQ", (rfqId: string) => {
-//     socket.join(`rfq:${rfqId}`);
-//     console.log(`Client ${socket.id} joined RFQ room rfq:${rfqId}`);
-//   });
-
-//   // Join a conversation room – used for real-time chat
-//   socket.on("joinConversation", (conversationId: string) => {
-//     socket.join(`conversation:${conversationId}`);
-//     console.log(
-//       `Client ${socket.id} joined conversation room conversation:${conversationId}`,
-//     );
-//   });
-
-//   socket.on("disconnect", () => {
-//     console.log("📴 Client disconnected", socket.id);
-//   });
-// });
-
 // In-memory presence map (userId → Set of socket ids)
 const onlineUsers = new Map<string, Set<string>>();
 
@@ -124,7 +101,7 @@ io.on("connection", async (socket) => {
     // Last socket gone → user is offline
     if (sockets.size === 0) {
       onlineUsers.delete(user.id);
-      const lastSeen = new Date().toISOString();
+      const lastSeen = new Date();
 
       await prisma.user
         .update({
