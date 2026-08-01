@@ -1,5 +1,3 @@
-// src/services/analytics.service.ts
-
 import { eachMonthOfInterval, eachWeekOfInterval, format } from "date-fns";
 import analyticsRepository from "../repository/analytics.repository.js";
 import {

@@ -8,89 +8,36 @@ export type PriceType = "fixed" | "range" | "quote";
 
 export interface ProductImage {
   id: string;
-
   url: string;
-
   isPrimary: boolean;
-
   displayOrder: number;
 }
 
-export interface Product {
-  id: string;
-
-  name: string;
-
-  category: string;
-
-  brand: string | null;
-
-  modelNumber: string | null;
-
-  sku: string;
-
-  shortDescription: string;
-
-  description: string;
-
-  currency: string;
-
-  priceType: "fixed" | "range";
-
-  price: string;
-
-  minPrice: string;
-
-  maxPrice: string;
-
-  unit: string;
-
-  minOrderQty: number;
-
-  availableQuantity: number;
-
-  images: ProductImage[];
-}
-
+// ---------- Raw / API shape ----------
 export interface RawProduct {
   id: string;
   name: string;
-
   category: string;
   subCategory?: string | null;
-
   sku?: string | null;
-
   status: ApiProductStatus | string;
-
   shortDescription?: string | null;
   description: string;
-
   priceType: PriceType | string;
-
   currency: string;
-
   price: string | null;
   minPrice: string | null;
   maxPrice: string | null;
-
   unit: string;
-
   minOrderQty: number;
   moqUnit?: string | null;
-
   availableQuantity: number;
-
   tags: string[];
-
   views?: number;
-
   updatedAt: string;
-
   shippingInfo?: {
     countryOfOrigin?: string;
   } | null;
-
   images: ProductImage[];
 }
 
@@ -99,10 +46,7 @@ export interface RawProductsResponse {
   data: RawProduct[];
 }
 
-// ============================
-// UI Product Model
-// ============================
-
+// ---------- UI model (single source of truth) ----------
 export type ProductStatus =
   | "Active"
   | "Draft"
@@ -111,100 +55,55 @@ export type ProductStatus =
 
 export interface Product {
   id: string;
-
   name: string;
-
   category: string;
-
   description: string;
-
   image: string | null;
-
   status: ProductStatus;
-
   price: string;
-
   moq: string;
-
   sku: string;
-
   stock: number;
-
   location: string;
-
   updatedAt: string;
-
   rating: number;
-
   reviews: number;
-
   views: number;
-
   rfqs: number;
-
   inquiries: number;
-
   clicks: number;
-
   conversion: number;
-
   tags: string[];
-
   featuredTag?: "Best Seller" | "Most Viewed" | "Most RFQs";
 }
 
-// ============================
-// API Payloads
-// ============================
-
+// ---------- Payloads ----------
 export interface BasicInfoPayload {
   name: string;
-
   category: string;
-
   subCategory?: string;
-
   brand?: string;
-
   modelNumber?: string;
-
   sku?: string;
-
   shortDescription?: string;
-
   description: string;
-
   priceType: PriceType;
-
   currency: string;
-
   price?: number;
-
   minPrice?: number;
-
   maxPrice?: number;
-
   unit: string;
-
   minOrderQty?: number;
-
   moqUnit?: string;
-
   availableQuantity?: number;
-
   stockUnit?: string;
-
   tags?: string[];
-
   keywords?: string[];
 }
 
 export interface MediaDetailsPayload {
   keyFeatures?: string[];
-
   specifications?: Record<string, string>;
-
   shippingInfo?: Record<string, string>;
-
   certifications?: string[];
 }

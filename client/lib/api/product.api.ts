@@ -1,83 +1,14 @@
-// import axios from "axios";
-import type { RawProductsResponse } from "@/types/product";
+import type {
+  RawProductsResponse,
+  Product,
+  BasicInfoPayload,
+  MediaDetailsPayload,
+} from "@/types/product";
 import { mapRawProduct } from "@/lib/mappers/product.mapper";
 import axios from "axios";
 import { ProductDetail } from "@/types/product-detail";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-export type PriceType = "fixed" | "range" | "rfq";
-export type ProductStatus = "draft" | "active" | "out_of_stock" | "archived";
-
-export interface ProductImage {
-  id: string;
-  url: string;
-  publicId: string;
-  isPrimary: boolean;
-  displayOrder: number;
-}
-
-export interface Product {
-  id: string;
-  supplierId: string;
-  name: string;
-  slug: string;
-  category: string;
-  subCategory?: string | null;
-  brand?: string | null;
-  modelNumber?: string | null;
-  sku?: string | null;
-  status: ProductStatus;
-  shortDescription?: string | null;
-  description: string;
-  keyFeatures?: string[] | null;
-  applications?: string[] | null;
-  benefits?: string[] | null;
-  priceType: PriceType;
-  currency: string;
-  price?: string | null;
-  minPrice?: string | null;
-  maxPrice?: string | null;
-  unit: string;
-  minOrderQty?: number | null;
-  moqUnit?: string | null;
-  availableQuantity?: number | null;
-  stockUnit?: string | null;
-  specifications?: Record<string, string> | null;
-  shippingInfo?: Record<string, string> | null;
-  certifications?: string[] | null;
-  tags: string[];
-  keywords: string[];
-  images: ProductImage[];
-}
-
-export interface BasicInfoPayload {
-  name: string;
-  category: string;
-  subCategory?: string;
-  brand?: string;
-  modelNumber?: string;
-  sku?: string;
-  shortDescription?: string;
-  description: string;
-  // priceType: PriceType;
-  // currency: string;
-  price?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  // unit: string;
-  minOrderQty?: number;
-  moqUnit?: string;
-  availableQuantity?: number;
-  stockUnit?: string;
-  tags?: string[];
-  keywords?: string[];
-}
-
-export interface MediaDetailsPayload {
-  keyFeatures?: string[];
-  specifications?: Record<string, string>;
-  shippingInfo?: Record<string, string>;
-  certifications?: string[];
-}
 
 export const createProductDraft = async (data: BasicInfoPayload) => {
   const response = await axios.post(`${API_URL}/api/products`, data, {
@@ -89,9 +20,7 @@ export const createProductDraft = async (data: BasicInfoPayload) => {
 export const getMyProducts = async (): Promise<{ data: Product[] }> => {
   const response = await axios.get<RawProductsResponse>(
     `${API_URL}/api/products/my-products`,
-    {
-      withCredentials: true,
-    },
+    { withCredentials: true },
   );
 
   return {

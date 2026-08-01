@@ -348,11 +348,3 @@ export default function SupplierAnalyticsPage() {
     </div>
   );
 }
-
-{
-  {
-    console.log(
-      "  aiteha dsiadtheu agags iaoi oyiu uuyjcjjuyfh  kiuytevvhk liuyrvcyo iuytf yuk  ",
-    );
-  }
-}

@@ -1,5 +1,3 @@
-// src/controllers/analytics.controller.ts
-
 import { Request, Response, NextFunction } from "express";
 import analyticsService from "../services/analytics.service.js";
 import { AnalyticsRange } from "../types/analytics.types.js";
