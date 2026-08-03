@@ -15,6 +15,7 @@ import productRoutes from "./routes/product.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import favoriteRoutes from "./routes/favorite.routes.js";
 
 const app = express();
 setupSwagger(app);
@@ -44,6 +45,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/supplier", analyticsRoutes);
+app.use("/api/favorites", favoriteRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 export default app;

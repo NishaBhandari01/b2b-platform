@@ -1,25 +1,3 @@
-// import { RFQService } from "../services/rfq.service.js";
-// import { Request, Response } from "express";
-
-// const rfqService = new RFQService();
-
-// export const createRFQ = async (req: Request, res: Response) => {
-//   try {
-//     const rfq = await rfqService.createRFQ(req.body);
-//     res.status(201).json({
-//       success: true,
-//       message: "RFQ created successfully",
-//       data: rfq,
-//     });
-//   } catch (error) {
-//     res.status(400).json({ error: (error as Error).message });
-//   }
-// };
-
-// export default {
-//   createRFQ,
-// };
-
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { RFQService } from "../services/rfq.service.js";

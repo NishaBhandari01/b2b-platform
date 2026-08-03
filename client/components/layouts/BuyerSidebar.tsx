@@ -29,6 +29,7 @@ const menuItems = [
 
 export function BuyerSidebar() {
   const pathname = usePathname();
+
   const { logout, isAuthenticated } = useAuth();
 
   const { data: unreadData } = useQuery<{
@@ -81,7 +82,9 @@ export function BuyerSidebar() {
       <nav className="flex-1 overflow-y-auto p-4 space-y-2">
         {menuItems.map((item) => {
           const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+            item.href === "/buyer"
+              ? pathname === "/buyer"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
 
           return (

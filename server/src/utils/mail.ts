@@ -48,12 +48,3 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
     throw error;
   }
 };
-
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ SMTP Verify Failed");
-    console.error(error);
-  } else {
-    console.log("✅ SMTP Server Ready");
-  }
-});

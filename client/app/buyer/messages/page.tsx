@@ -114,9 +114,9 @@ export default function BuyerMessages() {
     });
 
   return (
-    <div className="h-[calc(100vh-6rem)] min-h-[560px] rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex">
+    <div className="h-[calc(100vh-6rem)] min-h-140 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex">
       {/* ========== LEFT: Conversation list ========== */}
-      <div className="w-full max-w-[340px] shrink-0 border-r border-slate-100 flex flex-col bg-white">
+      <div className="w-full max-w-85 shrink-0 border-r border-slate-100 flex flex-col bg-white">
         {/* Search */}
         <div className="p-4 border-b border-slate-100">
           <div className="relative">
@@ -194,7 +194,7 @@ export default function BuyerMessages() {
                         {lastMsg ? lastMsg.text : conv.quotation.rfq.title}
                       </p>
                       {conv.unreadCount > 0 && (
-                        <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-orange-500 rounded-full shrink-0">
+                        <span className="ml-1 inline-flex items-center justify-center min-w-4.5 `h-4.5 px-1 text-[10px] font-bold text-white bg-orange-500 rounded-full shrink-0">
                           {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
                         </span>
                       )}

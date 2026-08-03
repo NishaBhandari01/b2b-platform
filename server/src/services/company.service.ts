@@ -8,14 +8,37 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { r2, bucketName, R2_PUBLIC_BASE_URL } from "../config/r2.js";
 
-// Fixed set of expected document names — matches what the UI renders as
-// rows even before anything has been uploaded.
 export const REQUIRED_DOCUMENT_NAMES = [
   "GST Certificate",
   "PAN Card",
   "Company Registration",
   "Bank Statement",
 ];
+
+/** Scalar fields allowed on create / update */
+function pickCompanyFields(data: any) {
+  const allowed = [
+    "name",
+    "gstNumber",
+    "panNumber",
+    "established",
+    "employees",
+    "description",
+    "website",
+    "email",
+    "phone",
+    "headquarters",
+    "industry",
+  ] as const;
+
+  const result: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (data[key] !== undefined) {
+      result[key] = data[key];
+    }
+  }
+  return result;
+}
 
 class CompanyService {
   private companyRepository;
@@ -32,9 +55,13 @@ class CompanyService {
       throw new Error("Company Profile already existed");
     }
 
+    if (!data?.name?.trim()) {
+      throw new Error("Company name is required");
+    }
+
     return this.companyRepository.createCompany({
       userId,
-      ...data,
+      ...pickCompanyFields(data),
     });
   }
 
@@ -48,6 +75,22 @@ class CompanyService {
     return company;
   }
 
+  async getCompanyById(companyId: string) {
+    const company = await companyRepository.getCompanyById(companyId);
+
+    if (!company) {
+      throw new Error("Company not found");
+    }
+
+    return company;
+  }
+
+  async getAllCompanies() {
+    const companies = await companyRepository.getAllCompanies();
+
+    return companies;
+  }
+
   async updateCompanyProfile(userId: string, data: any) {
     const company = await this.companyRepository.getCompanyByUserId(userId);
 
@@ -55,7 +98,15 @@ class CompanyService {
       throw new Error("Company profile not found");
     }
 
-    return this.companyRepository.updateCompany(userId, data);
+    return this.companyRepository.updateCompany(userId, {
+      ...pickCompanyFields(data),
+      // pass nested arrays only if client sends them
+      ...(data.documents !== undefined && { documents: data.documents }),
+      ...(data.certifications !== undefined && {
+        certifications: data.certifications,
+      }),
+      ...(data.branches !== undefined && { branches: data.branches }),
+    });
   }
 
   async uploadCompanyDocument(
@@ -91,13 +142,9 @@ class CompanyService {
       : await getSignedUrl(
           r2,
           new GetObjectCommand({ Bucket: bucketName, Key: fileKey }),
-          { expiresIn: 60 * 60 * 24 * 7 }, // 7 days
+          { expiresIn: 60 * 60 * 24 * 7 },
         );
 
-    // Best-effort cleanup of the previous file for this document slot.
-    // Only works when the bucket is public (we can derive the key from the
-    // stored URL); with signed private URLs we skip this rather than risk
-    // deleting the wrong object.
     const existingDoc = company.documents.find(
       (d: any) => d.name === documentName,
     );

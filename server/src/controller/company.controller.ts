@@ -6,7 +6,6 @@ class CompanyController {
   async createCompany(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-
       const company = await companyService.createCompanyProfile(
         userId,
         req.body,
@@ -28,7 +27,6 @@ class CompanyController {
   async getCompany(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-
       const company = await companyService.getCompanyProfile(userId);
 
       return res.status(200).json({
@@ -43,13 +41,46 @@ class CompanyController {
     }
   }
 
+  async getAllCompanies(req: AuthRequest, res: Response) {
+    try {
+      const companies = await companyService.getAllCompanies();
+
+      return res.json({
+        success: true,
+        data: companies,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async getCompanyById(req: AuthRequest, res: Response) {
+    try {
+      const company = await companyService.getCompanyById(
+        req.params.companyId as string,
+      );
+
+      return res.json({
+        success: true,
+        data: company,
+      });
+    } catch (error: any) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
   async updateCompany(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-
       const company = await companyService.updateCompanyProfile(
         userId,
-        req.body,
+        req.body, // includes website, email, phone, headquarters, industry
       );
 
       return res.status(200).json({
@@ -68,7 +99,7 @@ class CompanyController {
   async uploadDocument(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      const { name } = req.body; // e.g. "GST Certificate" — sent alongside the file
+      const { name } = req.body;
       const file = req.file;
 
       if (!file) {

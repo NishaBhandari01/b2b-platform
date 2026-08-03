@@ -100,3 +100,19 @@ export const uploadCompanyDocument = async (
 
   return response.data;
 };
+
+export const getAllCompanies = async () => {
+  const response = await axios.get(`${API_URL}/api/company`, {
+    withCredentials: true,
+  });
+
+  return response.data;
+};
+
+export const getCompanyById = async (companyId: string) => {
+  const response = await axios.get(`${API_URL}/api/company/${companyId}`, {
+    withCredentials: true,
+  });
+
+  return response.data;
+};

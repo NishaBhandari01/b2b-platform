@@ -20,21 +20,66 @@ class CompanyRepository {
     });
   }
 
+  async getCompanyById(companyId: string) {
+    return prisma.companyProfile.findUnique({
+      where: {
+        id: companyId,
+      },
+
+      include: {
+        certifications: true,
+        branches: true,
+        documents: true,
+
+        user: {
+          select: {
+            name: true,
+            email: true,
+
+            products: {
+              include: {
+                images: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async updateCompany(userId: string, data: any) {
     const { documents, certifications, branches, ...companyData } = data;
+
+    // Only pass real scalar fields so extra client keys don't break Prisma
+    const allowed = {
+      name: companyData.name,
+      gstNumber: companyData.gstNumber,
+      panNumber: companyData.panNumber,
+      established: companyData.established,
+      employees: companyData.employees,
+      description: companyData.description,
+      website: companyData.website,
+      email: companyData.email,
+      phone: companyData.phone,
+      headquarters: companyData.headquarters,
+      industry: companyData.industry,
+    };
+
+    // Drop undefined so we don't overwrite with undefined
+    const cleanData = Object.fromEntries(
+      Object.entries(allowed).filter(([, v]) => v !== undefined),
+    );
 
     return prisma.companyProfile.update({
       where: {
         userId,
       },
-
       data: {
-        ...companyData,
+        ...cleanData,
 
         ...(documents && {
           documents: {
             deleteMany: {},
-
             create: documents.map((doc: any) => ({
               name: doc.name,
               url: doc.url,
@@ -46,7 +91,6 @@ class CompanyRepository {
         ...(certifications && {
           certifications: {
             deleteMany: {},
-
             create: certifications.map((cert: any) => ({
               name: cert.name,
             })),
@@ -56,15 +100,14 @@ class CompanyRepository {
         ...(branches && {
           branches: {
             deleteMany: {},
-
             create: branches.map((branch: any) => ({
-              name: branch.name,
+              // schema uses `label`, not `name`
+              label: branch.label ?? branch.name,
               location: branch.location,
             })),
           },
         }),
       },
-
       include: {
         documents: true,
         certifications: true,
@@ -73,12 +116,6 @@ class CompanyRepository {
     });
   }
 
-  /**
-   * Upload flow needs to add/replace a SINGLE document without wiping the
-   * rest (unlike updateCompany's documents block, which deletes+recreates
-   * the whole set). We key on companyId + name since CompanyDocument has
-   * no dedicated "type" field.
-   */
   async upsertDocumentByName(
     companyId: string,
     name: string,
@@ -98,6 +135,51 @@ class CompanyRepository {
 
     return prisma.companyDocument.create({
       data: { companyId, name, url, status },
+    });
+  }
+
+  async getAllCompanies() {
+    return prisma.companyProfile.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      select: {
+        id: true,
+        name: true,
+        industry: true,
+        description: true,
+        website: true,
+        headquarters: true,
+        verified: true,
+        established: true,
+        employees: true,
+
+        certifications: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        user: {
+          select: {
+            products: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+
+        _count: {
+          select: {
+            certifications: true,
+            branches: true,
+            favoriteBy: true,
+          },
+        },
+      },
     });
   }
 }
