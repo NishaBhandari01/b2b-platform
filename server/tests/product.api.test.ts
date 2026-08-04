@@ -109,4 +109,93 @@ describe("Product API", () => {
 
     expect(updateResponse.body.data.name).toBe("Updated Name");
   });
+
+  it("Should get product by id", async () => {
+    const token = await createSupplierToken();
+
+    //create product first
+
+    const createResponse = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        name: "Dell laptop",
+        category: "Electronics",
+        description: "Gaming laptop",
+        minOrderQty: 10,
+      });
+
+    const productId = createResponse.body.data.id;
+
+    const response = await request(app)
+      .get(`/api/products/${productId}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+
+    expect(response.body.success).toBe(true);
+
+    expect(response.body.data.id).toBe(productId);
+
+    expect(response.body.data.name).toBe("Dell laptop");
+  });
+
+  it("Shold check supplier ownerShp", async () => {
+    const supplierAToken = await createSupplierToken();
+
+    // Supplier A creates product
+    const createResponse = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${supplierAToken}`)
+      .send({
+        name: "Dell Laptop",
+        category: "Electronics",
+        description: "Gaming laptop",
+        minOrderQty: 10,
+      });
+
+    const productId = createResponse.body.data.id;
+
+    //supplier B tries to access Supplier A product
+
+    const supplierBToken = await createSupplierToken();
+
+    const response = await request(app)
+      .get(`/api/products/${productId}`)
+      .set("Authorization", `Bearer ${supplierBToken}`);
+
+    expect(response.status).toBe(404);
+
+    expect(response.body.success).toBe(false);
+
+    expect(response.body.message).toBe("Product not found");
+  });
+
+  it("delete Product", async () => {
+    const token = await createSupplierToken();
+
+    const createResponse = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        name: "Dell Laptop",
+        category: "Electronics",
+        description: "Gaming laptop",
+        minOrderQty: 10,
+      });
+
+    const productId = createResponse.body.data.id;
+
+    const response = await request(app)
+      .delete(`/api/products/${productId}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    console.log(response.body);
+
+    expect(response.status).toBe(200);
+
+    expect(response.body.success).toBe(true);
+
+    expect(response.body.message).toBe("Product deleted successfully");
+  });
 });
