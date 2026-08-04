@@ -66,6 +66,14 @@ class OrderService {
 
     return orderRepository.updateStatus(id, status);
   }
+
+  async getSupplierOrderStats(userId: string) {
+    return orderRepository.getSupplierOrderStats(userId);
+  }
+
+  async getSupplierOrdersByStatus(userId: string, status?: string) {
+    return orderRepository.getSupplierOrdersByStatus(userId, status);
+  }
 }
 
 export default new OrderService();

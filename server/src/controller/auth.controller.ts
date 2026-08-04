@@ -8,7 +8,7 @@ import {
 } from "../validator/auth.validator.js";
 import { authService } from "../services/auth.service.js";
 import { AuthRequest } from "../middleware/auth.middleware.js";
-import { success } from "zod";
+import jwt from "jsonwebtoken";
 
 const cookieOptions = {
   httpOnly: true,
@@ -79,7 +79,7 @@ export const login = async (req: AuthRequest, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    return res.status(400).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });
@@ -136,8 +136,15 @@ export const refresh = async (req: AuthRequest, res: Response) => {
 
 export const logout = async (req: AuthRequest, res: Response) => {
   try {
-    if (req.user?.id) {
-      await authService.logoutUser(req.user.id);
+    const refreshToken = req.cookies.refreshToken;
+
+    if (refreshToken) {
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET!,
+      ) as { id: string };
+
+      await authService.logoutUser(payload.id);
     }
 
     clearAuthCookies(res);
@@ -147,13 +154,14 @@ export const logout = async (req: AuthRequest, res: Response) => {
       message: "Logged out successfully",
     });
   } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
+    clearAuthCookies(res);
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
     });
   }
 };
-
 export const google = async (req: AuthRequest, res: Response) => {
   try {
     const body = GoogleAuthSchema.parse(req.body);

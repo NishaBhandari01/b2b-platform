@@ -11,6 +11,7 @@ import {
   History,
   MapPin,
   LogOut,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ const menuItems = [
   { label: "Saved Suppliers", href: "/buyer/favorites", icon: Heart },
   { label: "Purchase Orders", href: "/buyer/orders", icon: ShoppingCart },
   { label: "Messages", href: "/buyer/messages", icon: MessageSquare },
+  { label: "Companies", href: "/buyer/company", icon: Building2 },
   { label: "Order History", href: "/buyer/history", icon: History },
   { label: "Addresses", href: "/buyer/addresses", icon: MapPin },
 ];

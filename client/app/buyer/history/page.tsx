@@ -46,9 +46,15 @@ export default function BuyerHistory() {
 
     type: "order",
 
+    itemName: order.rfq?.title || "Unknown Item",
+
     title: order.status === "delivered" ? "Order Delivered" : "Order Placed",
 
-    description: `Ordered from ${order.supplier.name}`,
+    description: `Ordered from ${order.supplier?.name || "Unknown Supplier"}`,
+
+    quantity: order.rfq?.quantity || 0,
+
+    category: order.rfq?.category || "N/A",
 
     amount: `$${order.amount.toLocaleString()}`,
 
@@ -113,10 +119,20 @@ export default function BuyerHistory() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h3 className="font-semibold text-slate-900">
-                      {activity.title}
+                      {activity.itemName}
                     </h3>
+
                     <p className="text-sm text-slate-600 mt-1">
                       {activity.description}
+                    </p>
+
+                    <p className="text-sm text-slate-500 mt-1">
+                      Category: {activity.category} | Quantity:{" "}
+                      {activity.quantity}
+                    </p>
+
+                    <p className="text-xs text-slate-400 mt-1">
+                      {activity.title}
                     </p>
                   </div>
                   <Badge

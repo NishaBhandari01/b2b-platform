@@ -18,6 +18,9 @@ model User {
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
 
+    // Refresh Token
+  hashedRefreshToken String?
+
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   rfqs             Rfq[]

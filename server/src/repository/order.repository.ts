@@ -24,12 +24,17 @@ class OrderRepository {
       },
 
       include: {
+        rfq: true,
         quotation: {
           include: {
             rfq: true,
           },
         },
         supplier: true,
+      },
+
+      orderBy: {
+        createdAt: "asc",
       },
     });
   }
@@ -40,15 +45,16 @@ class OrderRepository {
         supplierId: userId,
       },
       include: {
-        quatation: {
+        rfq: true,
+        quotation: {
           include: {
-            ref: true,
+            rfq: true,
           },
         },
         buyer: true,
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: "asc",
       },
     });
   }
@@ -59,7 +65,12 @@ class OrderRepository {
         id,
       },
       include: {
-        quatation: true,
+        rfq: true,
+        quotation: {
+          include: {
+            rfq: true,
+          },
+        },
         buyer: true,
         supplier: true,
       },
@@ -74,6 +85,127 @@ class OrderRepository {
       data: {
         status,
       },
+    });
+  }
+
+  async getSupplierOrderStats(userId: string) {
+    const [
+      total,
+      pending,
+      confirmed,
+      processing,
+      shipped,
+      delivered,
+      cancelled,
+    ] = await Promise.all([
+      prisma.order.count({
+        where: { supplierId: userId },
+      }),
+
+      prisma.order.count({
+        where: {
+          supplierId: userId,
+          status: "pending",
+        },
+      }),
+
+      prisma.order.count({
+        where: {
+          supplierId: userId,
+          status: "confirmed",
+        },
+      }),
+
+      prisma.order.count({
+        where: {
+          supplierId: userId,
+          status: "processing",
+        },
+      }),
+
+      prisma.order.count({
+        where: {
+          supplierId: userId,
+          status: "shipped",
+        },
+      }),
+
+      prisma.order.count({
+        where: {
+          supplierId: userId,
+          status: "delivered",
+        },
+      }),
+
+      prisma.order.count({
+        where: {
+          supplierId: userId,
+          status: "cancelled",
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      pending,
+      confirmed,
+      processing,
+      shipped,
+      delivered,
+      cancelled,
+    };
+  }
+
+  async getSupplierOrdersByStatus(userId: string, status?: string) {
+    return prisma.order.findMany({
+      where: {
+        supplierId: userId,
+
+        ...(status
+          ? {
+              status,
+            }
+          : {}),
+      },
+
+      include: {
+        rfq: true,
+        quotation: {
+          include: {
+            rfq: true,
+          },
+        },
+        buyer: true,
+      },
+
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
+  async getSupplierOrders(userId: string, page = 1, limit = 10) {
+    return prisma.order.findMany({
+      where: {
+        supplierId: userId,
+      },
+
+      include: {
+        quotation: {
+          include: {
+            rfq: true,
+          },
+        },
+
+        buyer: true,
+      },
+
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 }

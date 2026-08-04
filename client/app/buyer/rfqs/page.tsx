@@ -112,6 +112,9 @@ export default function BuyerRFQs() {
   const { success, error } = useToast();
   const queryClient = useQueryClient();
 
+  const [showCannotDeleteModal, setShowCannotDeleteModal] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
+
   // State for controlling the "Create RFQ" form visibility
   const [showForm, setShowForm] = useState(false);
   const [selectedRFQId, setSelectedRFQId] = useState<string | null>(null);
@@ -218,15 +221,39 @@ export default function BuyerRFQs() {
   // Delete RFQ mutation
   const deleteRFQMutation = useMutation({
     mutationFn: async (rfqId: string) => {
-      await request<void>(`/${rfqId}`, { method: "DELETE" });
+      return await request<void>(`/${rfqId}`, {
+        method: "DELETE",
+      });
     },
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["rfqs", "buyer"] });
-      queryClient.invalidateQueries({ queryKey: ["rfqs", "seller"] });
-      success("RFQ deleted", "The RFQ has been removed.");
+      queryClient.invalidateQueries({
+        queryKey: ["rfqs", "buyer"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["rfqs", "seller"],
+      });
+
+      success("RFQ deleted", "The RFQ has been removed successfully.");
     },
+
     onError: (err) => {
-      error("Delete failed", (err as Error).message);
+      const message = (err as Error).message;
+
+      if (
+        message.toLowerCase().includes("order") ||
+        message.toLowerCase().includes("active")
+      ) {
+        setDeleteErrorMessage(
+          "This RFQ cannot be deleted because it has an active order associated with it.",
+        );
+
+        setShowCannotDeleteModal(true);
+        return;
+      }
+
+      error("Delete failed", message);
     },
   });
 
@@ -420,20 +447,57 @@ export default function BuyerRFQs() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Delete RFQ</DialogTitle>
-          <DialogDescription>
-            This will permanently remove the RFQ and any quotations linked to
-            it. This action cannot be undone.
+
+          <DialogDescription className="space-y-2 pt-2">
+            <span className="block text-sm text-slate-700">
+              Are you sure you want to delete this RFQ?
+            </span>
+
+            <span className="block text-sm text-slate-500">
+              This action cannot be undone. RFQs linked to active orders cannot
+              be deleted.
+            </span>
           </DialogDescription>
         </DialogHeader>
+
         <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={closeDeleteModal}>
             Cancel
           </Button>
+
           <Button
             className="bg-rose-600 text-white hover:bg-rose-700"
             onClick={confirmDelete}
           >
             Delete RFQ
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const cannotDeleteDialog = (
+    <Dialog
+      open={showCannotDeleteModal}
+      onOpenChange={setShowCannotDeleteModal}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-red-600">
+            Unable to delete RFQ
+          </DialogTitle>
+
+          <DialogDescription className="mt-2 text-sm leading-relaxed">
+            {deleteErrorMessage}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            onClick={() => setShowCannotDeleteModal(false)}
+            className="bg-slate-900 text-white hover:bg-slate-800"
+          >
+            Got it
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -536,6 +600,7 @@ export default function BuyerRFQs() {
   return (
     <div className="space-y-6">
       {deleteDialog}
+      {cannotDeleteDialog}
 
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -1,5 +1,4 @@
 import prisma from "../config/db.js";
-import { resetPasswordEmail } from "../templates/resetPasswordEmail.js";
 
 export class AuthRepository {
   async createUser(userData: {
@@ -25,6 +24,50 @@ export class AuthRepository {
     return await prisma.user.findUnique({
       where: {
         id,
+      },
+    });
+  }
+
+  async saveRefreshToken(userId: string, hashedRefreshToken: string) {
+    return prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        hashedRefreshToken,
+      },
+    });
+  }
+
+  async findRefreshToken(userId: string) {
+    return prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        hashedRefreshToken: true,
+      },
+    });
+  }
+
+  async getRefreshToken(userId: string) {
+    return prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        hashedRefreshToken: true,
+      },
+    });
+  }
+
+  async clearRefreshToken(userId: string) {
+    return prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        hashedRefreshToken: null,
       },
     });
   }
@@ -71,14 +114,16 @@ export class AuthRepository {
         email,
       },
     });
+
     if (!user) {
       throw new Error("User not found");
     }
+
     return user;
   }
 
-  async logout(_userId: string) {
-    return true;
+  async logout(userId: string) {
+    return this.clearRefreshToken(userId);
   }
 }
 

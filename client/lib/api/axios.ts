@@ -2,14 +2,67 @@ import axios from "axios";
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
 });
+let isRefreshing = false;
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
+let failedQueue: any[] = [];
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+const processQueue = (error: any) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve();
+    }
+  });
 
-  return config;
-});
+  failedQueue = [];
+};
+
+api.interceptors.response.use(
+  (response) => response,
+
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve,
+            reject,
+          });
+        })
+          .then(() => {
+            return api(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        await api.post("/api/auth/refresh");
+
+        processQueue(null);
+
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError);
+
+        // refresh failed
+        window.location.href = "/login";
+
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);

@@ -6,6 +6,7 @@ import { AuthRepository } from "../repository/auth.repository.js";
 import { sendEmail } from "../utils/mail.js";
 import { resetPasswordEmail } from "../templates/resetPasswordEmail.js";
 import { generateResetToken } from "../utils/token.js";
+import { AppError } from "../utils/AppError.js";
 
 const authRepository = new AuthRepository();
 
@@ -13,33 +14,46 @@ const getAccessSecret = () => process.env.JWT_SECRET || "dev-access-secret";
 const getRefreshSecret = () =>
   process.env.REFRESH_TOKEN_SECRET || "dev-refresh-secret";
 
+const hashToken = (token: string) => {
+  return crypto.createHash("sha256").update(token).digest("hex");
+};
+
 const createTokenPayload = (user: { id: string; role: UserRole }) => ({
   id: user.id,
   role: user.role,
 });
-
-const createSessionPayload = (user: {
+const createSessionPayload = async (user: {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   createdAt: Date;
-}) => ({
-  accessToken: jwt.sign(createTokenPayload(user), getAccessSecret(), {
+}) => {
+  const accessToken = jwt.sign(createTokenPayload(user), getAccessSecret(), {
     expiresIn: "15m",
-  }),
-  refreshToken: jwt.sign(createTokenPayload(user), getRefreshSecret(), {
+  });
+
+  const refreshToken = jwt.sign(createTokenPayload(user), getRefreshSecret(), {
     expiresIn: "7d",
-  }),
-  user: {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    verified: false,
-    createdAt: user.createdAt,
-  },
-});
+  });
+
+  const hashedRefreshToken = hashToken(refreshToken);
+
+  await authRepository.saveRefreshToken(user.id, hashedRefreshToken);
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      verified: false,
+      createdAt: user.createdAt,
+    },
+  };
+};
 
 export class AuthService {
   async registerUser(
@@ -48,6 +62,7 @@ export class AuthService {
     password: string,
     role: UserRole,
   ) {
+    email = email.trim().toLowerCase();
     const existingUser = await authRepository.findUserByEmail(email);
     if (existingUser) {
       throw new Error("User already exists");
@@ -61,21 +76,25 @@ export class AuthService {
       role,
     });
 
-    return createSessionPayload(user);
+    return await createSessionPayload(user);
   }
 
   async loginUser(email: string, userData: { password: string }) {
-    const user = await authRepository.login(email, userData);
+    const user = await authRepository.findUserByEmail(email);
+
+    if (!user) {
+      throw new AppError("Invalid credentials", 401);
+    }
 
     const isPasswordValid = await bcrypt.compare(
       userData.password,
       user.password,
     );
     if (!isPasswordValid) {
-      throw new Error("Invalid password");
+      throw new AppError("Invalid credentials", 401);
     }
 
-    return createSessionPayload(user);
+    return await createSessionPayload(user);
   }
 
   async getCurrentUser(userId: string) {
@@ -95,17 +114,34 @@ export class AuthService {
   }
 
   async refreshSession(refreshToken: string) {
-    const payload = jwt.verify(refreshToken, getRefreshSecret()) as {
-      id: string;
-      role: UserRole;
-    };
+    try {
+      const payload = jwt.verify(refreshToken, getRefreshSecret()) as {
+        id: string;
+        role: UserRole;
+      };
 
-    const user = await authRepository.findUserById(payload.id);
-    if (!user) {
-      throw new Error("User not found");
+      const user = await authRepository.findUserById(payload.id);
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const storedToken = await authRepository.getRefreshToken(user.id);
+
+      if (!storedToken?.hashedRefreshToken) {
+        throw new Error("Refresh token not found");
+      }
+
+      const hashedToken = hashToken(refreshToken);
+
+      if (hashedToken !== storedToken.hashedRefreshToken) {
+        throw new Error("Invalid refresh token");
+      }
+
+      return await createSessionPayload(user);
+    } catch (error) {
+      throw new Error("Invalid refresh token");
     }
-
-    return createSessionPayload(user);
   }
 
   async logoutUser(userId: string) {
@@ -114,6 +150,7 @@ export class AuthService {
   }
 
   async googleLogin(email: string, name: string, role: UserRole = "buyer") {
+    email = email.trim().toLowerCase();
     let user = await authRepository.findUserByEmail(email);
 
     if (!user) {
@@ -130,13 +167,9 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    console.log("========== FORGOT PASSWORD ==========");
     email = email.trim().toLowerCase();
-    console.log("Email:", email);
 
     const user = await authRepository.findUserByEmail(email);
-
-    console.log("User:", user);
 
     if (!user) {
       console.log("❌ User not found");
@@ -149,28 +182,17 @@ export class AuthService {
 
     const { token, hashedToken } = generateResetToken();
 
-    console.log("Token:", token);
-    console.log("Hash:", hashedToken);
-
     const expires = new Date(Date.now() + 15 * 60 * 1000);
-
-    console.log("Saving token...");
 
     await authRepository.saveResetToken(user.id, hashedToken, expires);
 
-    console.log("✅ Token saved");
-
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-    console.log("Reset Link:", resetLink);
 
     await sendEmail(
       user.email,
       "Reset Password",
       resetPasswordEmail(user.name, resetLink),
     );
-
-    console.log("✅ Email sent");
 
     return {
       message:
@@ -179,11 +201,9 @@ export class AuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    console.log("Incoming token:", token);
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-    console.log("Hashed token:", hashedToken);
+    const hashedToken = hashToken(token);
+
     const user = await authRepository.findByResetToken(hashedToken);
-    console.log("User found:", user);
 
     if (!user) {
       throw new Error("Invalid or expired reset link.");
@@ -192,38 +212,12 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await authRepository.updatePassword(user.id, hashedPassword);
+    await authRepository.clearRefreshToken(user.id);
 
     return {
       message: "Password reset successfully.",
     };
   }
-
-  createSessionPayload = (user: {
-    id: string;
-    name: string;
-    email: string;
-    role: UserRole;
-    createdAt: Date;
-  }) => {
-    console.log("SIGN SECRET:", getAccessSecret());
-
-    return {
-      accessToken: jwt.sign(createTokenPayload(user), getAccessSecret(), {
-        expiresIn: "15m",
-      }),
-      refreshToken: jwt.sign(createTokenPayload(user), getRefreshSecret(), {
-        expiresIn: "7d",
-      }),
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        verified: false,
-        createdAt: user.createdAt,
-      },
-    };
-  };
 }
 
 export const authService = new AuthService();

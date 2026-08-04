@@ -5,5 +5,5 @@ export async function cleanDatabase() {
   await prisma.product.deleteMany();
   await prisma.rfq.deleteMany();
   await prisma.user.deleteMany();
-  console.log("🧹 cleaning test database");
+  // console.log("🧹 cleaning test database");
 }

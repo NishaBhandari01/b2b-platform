@@ -62,17 +62,23 @@ class OrderController {
   // GET /api/orders/supplier
   async supplierOrders(req: AuthRequest, res: Response) {
     try {
-      const orders = await orderService.getSupplierOrders(req.user!.id);
+      const { status } = req.query;
+
+      const orders =
+        status && status !== "all"
+          ? await orderService.getSupplierOrdersByStatus(
+              req.user!.id,
+              status as string,
+            )
+          : await orderService.getSupplierOrders(req.user!.id);
 
       res.json({
         success: true,
-
         data: orders,
       });
     } catch (error: any) {
       res.status(500).json({
         success: false,
-
         message: error.message,
       });
     }
@@ -108,6 +114,22 @@ class OrderController {
       return res.status(400).json({
         success: false,
 
+        message: error.message,
+      });
+    }
+  }
+
+  async supplierOrderStats(req: AuthRequest, res: Response) {
+    try {
+      const stats = await orderService.getSupplierOrderStats(req.user!.id);
+
+      return res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
         message: error.message,
       });
     }

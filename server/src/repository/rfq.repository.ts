@@ -93,72 +93,6 @@ export class RFQRepository {
     });
   }
 
-  // async getUserRFQs(userId: string, role: string) {
-  //   if (role === "buyer") {
-  //     return await prisma.rfq.findMany({
-  //       where: {
-  //         userId,
-  //       },
-  //       orderBy: {
-  //         createdAt: "desc",
-  //       },
-  //       include: {
-  //         _count: {
-  //           select: {
-  //             quotations: true,
-  //           },
-  //         },
-  //       },
-  //     });
-  //   }
-
-  //   return await prisma.rfq.findMany({
-  //     where: {
-  //       status: "published",
-  //     },
-  //     orderBy: {
-  //       createdAt: "desc",
-  //     },
-  //     include: {
-  //       _count: {
-  //         select: {
-  //           quotations: true,
-  //         },
-  //       },
-  //     },
-  //   });
-  // }
-
-  // async getUserRFQs(userId: string, role: string) {
-  //   if (role === "buyer") {
-  //     return await prisma.rfq.findMany({
-  //       where: { userId },
-  //       orderBy: { createdAt: "desc" },
-  //       include: {
-  //         _count: { select: { quotations: true } },
-  //       },
-  //     });
-  //   }
-
-  //   const rfqs = await prisma.rfq.findMany({
-  //     where: { status: "published" },
-  //     orderBy: { createdAt: "desc" },
-  //     include: {
-  //       _count: { select: { quotations: true } },
-  //       quotations: {
-  //         where: { supplierId: userId },
-  //         select: { id: true },
-  //       },
-  //     },
-  //   });
-
-  //   // Flatten quotations[] into a boolean so the frontend doesn't see other suppliers' data
-  //   return rfqs.map(({ quotations, ...rfq }) => ({
-  //     ...rfq,
-  //     hasQuoted: quotations.length > 0,
-  //   }));
-  // }
-
   async getUserRFQs(userId: string, role: string) {
     if (role === "buyer") {
       return await prisma.rfq.findMany({
@@ -247,6 +181,15 @@ export class RFQRepository {
   }
 
   async deleteRFQ(rfqId: string) {
+    const order = await prisma.order.findFirst({
+      where: {
+        rfqId,
+      },
+    });
+
+    if (order) {
+      throw new Error("Cannot delete RFQ because an order exists");
+    }
     return await prisma.rfq.delete({
       where: { id: rfqId },
     });

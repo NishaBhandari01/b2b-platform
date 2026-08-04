@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Store,
   LogOut,
+  ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ const menuItems = [
   { label: "Active Leads", href: "/supplier/leads", icon: Zap },
   { label: "RFQ Requests", href: "/supplier/rfqs", icon: FileText },
   { label: "Messages", href: "/supplier/messages", icon: MessageSquare },
+  { label: "Orders", href: "/supplier/orders", icon: ShoppingCart },
   { label: "Performance", href: "/supplier/analytics", icon: TrendingUp },
   { label: "Store Profile", href: "/supplier/company", icon: Store },
 ];
