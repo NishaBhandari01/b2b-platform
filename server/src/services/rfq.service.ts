@@ -100,33 +100,6 @@ export class RFQService {
     return await this.rfqRepository.createMessage(payload);
   }
 
-  // async createQuotation(payload: {
-  //   rfqId: string;
-  //   supplierId: string;
-  //   price: number;
-  //   leadTime: string;
-  //   message: string;
-  // }) {
-  //   const rfq = await this.rfqRepository.getRFQById(payload.rfqId);
-  //   if (!rfq) {
-  //     throw new Error("RFQ not found");
-  //   }
-  //   if (rfq.status !== "published") {
-  //     throw new Error("Cannot submit a quotation for a closed RFQ");
-  //   }
-  //   const alreadyQuoted = await this.rfqRepository.hasSupplierQuotation(
-  //     payload.rfqId,
-  //     payload.supplierId,
-  //   );
-  //   // if (alreadyQuoted) {
-  //   //   throw new Error(
-  //   //     "A quotation has already been submitted by this supplier",
-  //   //   );
-  //   // }
-
-  //   return await this.rfqRepository.createQuotation(payload);
-  // }
-
   async createQuotation(payload: {
     rfqId: string;
     supplierId: string;
