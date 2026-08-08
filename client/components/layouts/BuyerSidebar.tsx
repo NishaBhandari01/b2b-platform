@@ -22,7 +22,7 @@ const menuItems = [
   { label: "Dashboard", href: "/buyer", icon: LayoutDashboard },
   { label: "Create RFQ", href: "/buyer/rfqs", icon: FileText },
   { label: "Saved Suppliers", href: "/buyer/favorites", icon: Heart },
-  { label: "Purchase Orders", href: "/buyer/orders", icon: ShoppingCart },
+  // { label: "Purchase Orders", href: "/buyer/orders", icon: ShoppingCart },
   { label: "Messages", href: "/buyer/messages", icon: MessageSquare },
   { label: "Companies", href: "/buyer/company", icon: Building2 },
   { label: "Order History", href: "/buyer/history", icon: History },
