@@ -252,7 +252,7 @@ function RegisterPageContent() {
                   value={email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   onBlur={() => handleBlur("email")}
-                  placeholder="you@example.com"
+                  placeholder="Enter your email address"
                   aria-invalid={!!errors.email}
                   className={fieldClasses(!!(touched.email && errors.email))}
                 />

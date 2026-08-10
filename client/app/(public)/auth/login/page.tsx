@@ -213,7 +213,7 @@ export default function LoginPage() {
           </form>
 
           {/* Divider */}
-          <div className="relative my-6">
+          {/* <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border"></div>
             </div>
@@ -222,11 +222,11 @@ export default function LoginPage() {
                 or continue with
               </span>
             </div>
-          </div>
+          </div> */}
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4">
-            <Button
+            {/* <Button
               variant="outline"
               className="gap-2"
               onClick={async () => {
@@ -277,7 +277,7 @@ export default function LoginPage() {
                 <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.39v-1.2h-2.49v8.5h2.5v-4.42c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.42h2.5M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.5H5.5v8.5h2.77z" />
               </svg>
               LinkedIn
-            </Button>
+            </Button> */}
           </div>
         </div>
 
